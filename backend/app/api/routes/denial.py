@@ -13,8 +13,13 @@ from fastapi import APIRouter, HTTPException
 
 from app.core.logging import get_logger
 from app.data.demo_cases import DENIAL_EVENTS, APPEAL_CITATIONS
-from app.data.patients import PATIENT_DEMOGRAPHICS, FHIR_SERVICE_REQUESTS, ORDER_REQUESTS
-from app.models.schemas import DenialEvent, AppealLetter, ErrorResponse
+from app.data.patients import (
+    ORDERING_PROVIDER_CONTACT,
+    PATIENT_DEMOGRAPHICS,
+    FHIR_SERVICE_REQUESTS,
+    ORDER_REQUESTS,
+)
+from app.models.schemas import DenialEvent, AppealLetter, ErrorResponse, OrderRequest
 from app.services.llm import generate_text
 
 logger = get_logger(__name__)
@@ -36,14 +41,39 @@ _PAYER_DISPLAY: dict[str, str] = {
 }
 
 
+def _get_order_for_denial(denial: DenialEvent) -> OrderRequest | None:
+    """Resolve the demo order linked to this denial via original_order_id → patient."""
+    patient_id = _ORDER_ID_TO_PATIENT.get(denial.original_order_id)
+    if not patient_id:
+        return None
+    return next((o for o in ORDER_REQUESTS.values() if o.patient_id == patient_id), None)
+
+
+def _build_signature_block(order: OrderRequest | None) -> str:
+    """Build a concrete signature block — never placeholder labels."""
+    if not order or not order.ordering_provider_name:
+        return ""
+    contact = ORDERING_PROVIDER_CONTACT.get(order.ordering_provider_npi, {})
+    lines = [order.ordering_provider_name]
+    if specialty := contact.get("specialty"):
+        lines.append(specialty)
+    if order.ordering_provider_npi:
+        lines.append(f"NPI: {order.ordering_provider_npi}")
+    if phone := contact.get("phone"):
+        lines.append(f"Phone: {phone}")
+    return "\n".join(lines)
+
+
 def _get_patient_context(
     denial: DenialEvent,
-) -> tuple[str, str, str, str | None, list[str], str | None]:
-    """Return (name, dob, payer_display, cpt_code, icd10_codes, patient_id) for the denial's order."""
+) -> tuple[str, str, str, str | None, list[str], str | None, OrderRequest | None, str]:
+    """Return patient/order fields and a ready-to-use signature block for the appeal prompt."""
+    order = _get_order_for_denial(denial)
+    signature_block = _build_signature_block(order)
+
     patient_id = _ORDER_ID_TO_PATIENT.get(denial.original_order_id)
     if patient_id:
         demo = PATIENT_DEMOGRAPHICS.get(patient_id)
-        order = next((o for o in ORDER_REQUESTS.values() if o.patient_id == patient_id), None)
         payer_display = (
             _PAYER_DISPLAY.get(order.payer_id, order.payer_id) if order else "Unknown Payer"
         )
@@ -55,6 +85,8 @@ def _get_patient_context(
                 order.cpt_code if order else None,
                 list(order.icd10_codes) if order else [],
                 patient_id,
+                order,
+                signature_block,
             )
 
     return (
@@ -64,6 +96,8 @@ def _get_patient_context(
         None,
         [],
         None,
+        order,
+        signature_block,
     )
 
 
@@ -76,6 +110,9 @@ def _build_appeal_prompt(
     cpt_code: str | None,
     icd10_codes: list[str],
     patient_id: str | None,
+    ordering_provider_name: str | None,
+    ordering_provider_npi: str | None,
+    signature_block: str,
 ) -> str:
     citations_text = "\n".join(
         f"  [{i+1}] {c['title']}\n"
@@ -103,6 +140,10 @@ PATIENT:
 - ICD-10 Diagnosis: {", ".join(icd10_codes) if icd10_codes else "See clinical record"}
 - Original Order ID: {denial.original_order_id}
 
+ORDERING PROVIDER:
+- Name: {ordering_provider_name or "See order on file"}
+- NPI: {ordering_provider_npi or "N/A"}
+
 SUPPORTING EVIDENCE (cite all of the following in the letter):
 {citations_text}
 
@@ -115,11 +156,15 @@ Write a complete formal appeal letter with these requirements:
 3. Quote the specific denial reason and address it point by point
 4. Cite each of the 3 clinical guidelines above with specific page/section references
 5. State clearly that supplemental cardiology documentation will be provided
-6. Close with a request for expedited review and contact information for questions
-7. Include a signature block for the ordering physician
-8. Do NOT use markdown formatting — write in plain text with standard letter formatting
-9. Include today's date: {datetime.utcnow().strftime("%B %d, %Y")}
-10. The letter should be 400-550 words
+6. Close with a request for expedited review; use the ordering physician phone from the signature block for contact questions
+7. Do NOT use markdown formatting — write in plain text with standard letter formatting
+8. Include today's date: {datetime.utcnow().strftime("%B %d, %Y")}
+9. The letter should be 400-550 words
+10. End with EXACTLY the following signature block — copy it verbatim with no edits, additions, or placeholder text:
+
+{signature_block if signature_block else ordering_provider_name or "Ordering Physician"}
+
+FORBIDDEN: Do not use placeholder text such as "Dr. Physician Name", "Practice Name", "Address", or "Phone Number" as labels without real values.
 
 Return ONLY the appeal letter text."""
 
@@ -169,7 +214,16 @@ async def generate_appeal(denial: DenialEvent) -> AppealLetter:
         logger.warning("appeal.no_citations", denial_id=denial.denial_id)
 
     # Resolve patient context from the denial's original order ID
-    patient_name, dob, payer_display, cpt_code, icd10_codes, patient_id = _get_patient_context(denial)
+    (
+        patient_name,
+        dob,
+        payer_display,
+        cpt_code,
+        icd10_codes,
+        patient_id,
+        order,
+        signature_block,
+    ) = _get_patient_context(denial)
 
     # Build prompt and generate
     prompt = _build_appeal_prompt(
@@ -181,6 +235,9 @@ async def generate_appeal(denial: DenialEvent) -> AppealLetter:
         cpt_code,
         icd10_codes,
         patient_id,
+        order.ordering_provider_name if order else None,
+        order.ordering_provider_npi if order else None,
+        signature_block,
     )
 
     try:

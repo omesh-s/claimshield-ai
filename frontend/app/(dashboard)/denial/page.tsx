@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   AlertTriangle,
@@ -19,7 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { denialApi, demoCaseApi, demoCasesApi } from "@/lib/api";
+import { denialApi, demoCaseApi, demoCasesApi, recordsApi } from "@/lib/api";
 import type { AppealLetter, DenialEvent } from "@/types";
 
 const DEMO_DENIAL_CASE_ID = "DEMO-001";
@@ -60,6 +61,7 @@ interface FormState {
 }
 
 export default function DenialPage() {
+  const router = useRouter();
   const [form, setForm] = useState<FormState>({
     patient_id: "",
     payer_id: "bcbs_tx",
@@ -74,6 +76,7 @@ export default function DenialPage() {
   const [demoLabel, setDemoLabel] = useState<string | null>(null);
   const [appeal, setAppeal] = useState<AppealLetter | null>(null);
   const [letterText, setLetterText] = useState("");
+  const [packageLoading, setPackageLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function field(key: keyof FormState, value: string) {
@@ -150,6 +153,43 @@ export default function DenialPage() {
       toast.error("Appeal generation failed", { duration: 4000 });
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function approveAndPackageAppeal() {
+    const denialId = seededDenial?.denial_id ?? appeal?.denial_id;
+    if (!letterText.trim()) {
+      toast.error("Generate an appeal letter before packaging.");
+      return;
+    }
+    if (!denialId) {
+      toast.error("Load a demo denial or generate an appeal with a denial ID first.");
+      return;
+    }
+    if (!form.patient_id || !form.payer_id) {
+      toast.error("Patient ID and payer are required.");
+      return;
+    }
+
+    setPackageLoading(true);
+    try {
+      await recordsApi.packageAppealRecords({
+        patient_id: form.patient_id,
+        payer_id: form.payer_id,
+        denial_id: denialId,
+        appeal_letter_content: letterText,
+        order_id: seededDenial?.original_order_id,
+        run_id: `appeal-${denialId}`,
+      });
+      toast.success("Appeal package assembled — ready for review", { duration: 4000 });
+      router.push("/records");
+    } catch (err) {
+      toast.error("Packaging failed", {
+        description: err instanceof Error ? err.message : "Unknown error",
+        duration: 4000,
+      });
+    } finally {
+      setPackageLoading(false);
     }
   }
 
@@ -420,10 +460,20 @@ export default function DenialPage() {
                   </Button>
                   <Button
                     className="flex-1 bg-primary text-primary-foreground hover:bg-primary/90"
-                    onClick={() => toast.success("Bundle approval flow — use the New Order page to package records.", { duration: 5000 })}
+                    onClick={approveAndPackageAppeal}
+                    disabled={packageLoading || !letterText.trim()}
                   >
-                    <ShieldCheck className="w-4 h-4 mr-2" />
-                    Approve &amp; Package Records
+                    {packageLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Packaging…
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4 mr-2" />
+                        Approve &amp; Package Records
+                      </>
+                    )}
                   </Button>
                 </div>
               </CardContent>

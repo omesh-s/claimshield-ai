@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { toast } from "sonner";
 import {
   Package,
@@ -41,6 +41,32 @@ const BUNDLE_TYPES = [
   "Payer Audit",
 ];
 
+/** Same patient + payer + bundle_type; earliest assembled_at is the original. */
+function packageGroupKey(row: PackageSummary): string {
+  return `${row.patient_id}|${row.payer_id}|${row.bundle_type}`;
+}
+
+function computeDuplicateBundleIds(packages: PackageSummary[]): Set<string> {
+  const groups = new Map<string, PackageSummary[]>();
+  for (const row of packages) {
+    const key = packageGroupKey(row);
+    const list = groups.get(key) ?? [];
+    list.push(row);
+    groups.set(key, list);
+  }
+
+  const duplicateIds = new Set<string>();
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    const sorted = [...group].sort(
+      (a, b) => new Date(a.assembled_at).getTime() - new Date(b.assembled_at).getTime(),
+    );
+    for (let i = 1; i < sorted.length; i++) {
+      duplicateIds.add(sorted[i].bundle_id);
+    }
+  }
+  return duplicateIds;
+}
 
 interface FormState {
   patient_id: string;
@@ -104,6 +130,16 @@ export default function RecordsPage() {
   const [error, setError] = useState<string | null>(null);
   const [packages, setPackages] = useState<PackageSummary[]>([]);
   const [packagesLoading, setPackagesLoading] = useState(true);
+  const [duplicateBannerDismissed, setDuplicateBannerDismissed] = useState(false);
+
+  const duplicateBundleIds = useMemo(() => computeDuplicateBundleIds(packages), [packages]);
+  const duplicateCount = duplicateBundleIds.size;
+
+  useEffect(() => {
+    if (duplicateCount === 0) {
+      setDuplicateBannerDismissed(false);
+    }
+  }, [duplicateCount]);
 
   const fetchPackages = useCallback(async () => {
     try {
@@ -364,6 +400,22 @@ export default function RecordsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="pb-5">
+          {!packagesLoading && duplicateCount > 0 && !duplicateBannerDismissed && (
+            <div className="mb-3 flex items-start justify-between gap-2 rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2 text-xs text-yellow-700">
+              <p>
+                ⚠️ {duplicateCount} duplicate package{duplicateCount === 1 ? "" : "s"} detected — consider
+                reviewing before submission.
+              </p>
+              <button
+                type="button"
+                onClick={() => setDuplicateBannerDismissed(true)}
+                className="shrink-0 text-yellow-600 hover:text-yellow-800 font-medium"
+                aria-label="Dismiss duplicate warning"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
           {packagesLoading ? (
             <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -387,9 +439,20 @@ export default function RecordsPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {packages.map((row) => (
+                  {packages.map((row) => {
+                    const isDuplicate = duplicateBundleIds.has(row.bundle_id);
+                    return (
                     <tr key={row.bundle_id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
-                      <td className="py-2.5 pr-4 font-mono text-xs text-foreground">{row.bundle_id}</td>
+                      <td className="py-2.5 pr-4 font-mono text-xs text-foreground">
+                        <span className="inline-flex items-center gap-1.5">
+                          {row.bundle_id}
+                          {isDuplicate && (
+                            <Badge className="text-[9px] px-1 py-0 h-4 font-medium bg-yellow-50 border-yellow-200 text-yellow-700">
+                              Duplicate
+                            </Badge>
+                          )}
+                        </span>
+                      </td>
                       <td className="py-2.5 pr-4 text-foreground">{row.patient_name}</td>
                       <td className="py-2.5 pr-4 text-muted-foreground">{row.payer_name}</td>
                       <td className="py-2.5 pr-4 text-muted-foreground">{row.bundle_type}</td>
@@ -408,7 +471,8 @@ export default function RecordsPage() {
                         })}
                       </td>
                     </tr>
-                  ))}
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

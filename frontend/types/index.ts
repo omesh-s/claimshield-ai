@@ -240,6 +240,8 @@ export interface PackagedBundle {
   patient_id: string;
   order_id: string;
   payer_id: string;
+  bundle_type?: string;
+  denial_id?: string;
   assembled_at: string;
   patient_demographics?: PatientDemographics;
   artifacts: ChartArtifact[];

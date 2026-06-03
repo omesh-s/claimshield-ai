@@ -235,6 +235,16 @@ FHIR_SERVICE_REQUESTS: dict[str, FHIRServiceRequest] = {
 }
 
 # ---------------------------------------------------------------------------
+# Ordering provider contact lines for appeal letter signatures (keyed by NPI)
+# ---------------------------------------------------------------------------
+
+ORDERING_PROVIDER_CONTACT: dict[str, dict[str, str]] = {
+    "1245319599": {"specialty": "Internal Medicine", "phone": "555-0199"},
+    "1234567892": {"specialty": "Cardiovascular Disease", "phone": "555-0102"},
+    "1578901234": {"specialty": "Internal Medicine", "phone": "555-0104"},
+}
+
+# ---------------------------------------------------------------------------
 # OrderRequest objects (ClaimShield internal schema)
 # ---------------------------------------------------------------------------
 

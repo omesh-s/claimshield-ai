@@ -62,19 +62,24 @@ class PackagedBundle(BaseModel):
     patient_id: str
     order_id: str
     payer_id: str
+    bundle_type: str = "Prior Auth Support"
     assembled_at: datetime
     patient_demographics: PatientDemographics | None
     artifacts: list[ChartArtifact]
     total_artifacts: int
     submission_checklist: list[SubmissionChecklistItem]
+    denial_id: str | None = None
     notes: str | None = None
 
 
 class PackageRecordsRequest(BaseModel):
-    run_id: str
+    run_id: str = ""
     patient_id: str   # e.g., "DEMO-001" or "10482736"
-    order_id: str
+    order_id: str = ""
     payer_id: str
+    bundle_type: str = "Prior Auth Support"
+    denial_id: str | None = None
+    appeal_letter_content: str | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -150,17 +155,62 @@ def _build_checklist(
     return checklist
 
 
+def _build_appeal_checklist(denial_id: str | None) -> list[SubmissionChecklistItem]:
+    """Checklist for denial-appeal packages."""
+    ref = denial_id or "on file"
+    return [
+        SubmissionChecklistItem(
+            item="Appeal letter (AI-drafted, staff reviewed)",
+            status="complete",
+            note="Appeal letter included in bundle for payer submission",
+        ),
+        SubmissionChecklistItem(
+            item=f"Payer denial on file ({ref})",
+            status="complete",
+            note="Denial reason and reference attached to package",
+        ),
+        SubmissionChecklistItem(
+            item="Supporting clinical chart artifacts",
+            status="complete",
+            note="Patient chart documents bundled with appeal",
+        ),
+        SubmissionChecklistItem(
+            item="Guideline citations verified",
+            status="pending",
+            note="Clinical staff to confirm ACC/AHA and payer-policy citations",
+        ),
+        SubmissionChecklistItem(
+            item="Supplemental cardiology documentation",
+            status="action_required",
+            note="Obtain and attach cardiology consultation note before payer submission",
+        ),
+        SubmissionChecklistItem(
+            item="Payer appeal submission form",
+            status="pending",
+            note="Complete payer portal appeal form before final submission",
+        ),
+    ]
+
+
+def _appeal_letter_artifact(denial_id: str | None, content: str) -> ChartArtifact:
+    today = datetime.utcnow().strftime("%Y-%m-%d")
+    return ChartArtifact(
+        artifact_id=f"ART-APPEAL-{str(uuid.uuid4())[:8].upper()}",
+        artifact_type="progress_note",
+        title=f"Appeal Letter — {denial_id or 'Denial'}",
+        date=today,
+        provider="ClaimShield AI — Staff Review Required",
+        content=content,
+        relevance_score=1.0,
+    )
+
+
 # ---------------------------------------------------------------------------
 # Route
 # ---------------------------------------------------------------------------
 
 
-@router.post(
-    "/package",
-    response_model=PackagedBundle,
-    responses={404: {"model": ErrorResponse}},
-)
-async def package_records(request: PackageRecordsRequest) -> PackagedBundle:
+async def _assemble_package(request: PackageRecordsRequest) -> PackagedBundle:
     """
     Assemble a payer-ready bundle of supporting clinical records.
 
@@ -183,39 +233,61 @@ async def package_records(request: PackageRecordsRequest) -> PackagedBundle:
         )
 
     demographics = PATIENT_DEMOGRAPHICS.get(patient_id)
-    artifacts = CHART_ARTIFACTS.get(patient_id, [])
+    artifacts = list(CHART_ARTIFACTS.get(patient_id, []))
+    is_appeal = request.bundle_type == "Denial Appeal"
 
-    # Build submission checklist
-    checklist = _build_checklist(artifacts, request.payer_id, patient_id)
+    if request.appeal_letter_content:
+        artifacts.insert(
+            0,
+            _appeal_letter_artifact(request.denial_id, request.appeal_letter_content),
+        )
+
+    checklist = (
+        _build_appeal_checklist(request.denial_id)
+        if is_appeal
+        else _build_checklist(artifacts, request.payer_id, patient_id)
+    )
+
+    order_id = request.order_id or (
+        request.denial_id if is_appeal and request.denial_id else f"ORDER-{patient_id}"
+    )
+    notes_parts = [
+        "AI-assembled bundle for staff review. Verify all items in the submission "
+        "checklist before payer submission. This bundle is a draft — do not submit "
+        "without clinical staff approval.",
+    ]
+    if request.denial_id:
+        notes_parts.append(f"Denial ID: {request.denial_id}.")
+    if is_appeal:
+        notes_parts.append("Denial appeal package — includes staff-reviewed appeal letter.")
 
     bundle = PackagedBundle(
         bundle_id=f"BUNDLE-{str(uuid.uuid4())[:8].upper()}",
-        patient_id=request.patient_id,
-        order_id=request.order_id,
+        patient_id=patient_id,
+        order_id=order_id,
         payer_id=request.payer_id,
+        bundle_type=request.bundle_type,
         assembled_at=datetime.utcnow(),
         patient_demographics=demographics,
         artifacts=artifacts,
         total_artifacts=len(artifacts),
         submission_checklist=checklist,
-        notes=(
-            "AI-assembled bundle for staff review. Verify all items in the submission "
-            "checklist before payer submission. This bundle is a draft — do not submit "
-            "without clinical staff approval."
-        ),
+        denial_id=request.denial_id,
+        notes=" ".join(notes_parts),
     )
 
     logger.info(
         "package_records.complete",
         bundle_id=bundle.bundle_id,
+        bundle_type=request.bundle_type,
         artifact_count=bundle.total_artifacts,
         checklist_items=len(checklist),
+        denial_id=request.denial_id,
     )
 
-    # Persist to in-memory store so GET /records/packages can return it
     patient_name = (
         f"{demographics.first_name} {demographics.last_name}"
-        if demographics else request.patient_id
+        if demographics else patient_id
     )
     _PACKAGE_STORE.insert(0, {
         "bundle_id": bundle.bundle_id,
@@ -223,12 +295,36 @@ async def package_records(request: PackageRecordsRequest) -> PackagedBundle:
         "patient_name": patient_name,
         "payer_id": request.payer_id,
         "payer_name": _PAYER_DISPLAY.get(request.payer_id, request.payer_id),
-        "bundle_type": "Prior Auth Support",
+        "bundle_type": request.bundle_type,
         "status": "Ready for Review",
         "assembled_at": bundle.assembled_at.isoformat(),
     })
 
     return bundle
+
+
+@router.post(
+    "/package",
+    response_model=PackagedBundle,
+    responses={404: {"model": ErrorResponse}},
+)
+async def package_records(request: PackageRecordsRequest) -> PackagedBundle:
+    """Assemble a payer-ready bundle (legacy path)."""
+    return await _assemble_package(request)
+
+
+# Top-level alias: POST /api/v1/package-records
+package_alias_router = APIRouter()
+
+
+@package_alias_router.post(
+    "/package-records",
+    response_model=PackagedBundle,
+    responses={404: {"model": ErrorResponse}},
+)
+async def package_records_alias(request: PackageRecordsRequest) -> PackagedBundle:
+    """Assemble a record package (including denial appeal bundles)."""
+    return await _assemble_package(request)
 
 
 class PackageSummary(BaseModel):

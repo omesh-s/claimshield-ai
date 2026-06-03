@@ -917,6 +917,38 @@ export default function OrderPage() {
     }
   };
 
+  const approveAndPackageAppeal = async () => {
+    if (!appealLetter || !denialEvent || !appealLetterText.trim()) {
+      toast.error("Generate an appeal letter before packaging.", TOAST_OPTS);
+      return;
+    }
+    if (!form.patient_id || !form.payer_id) {
+      toast.error("Patient and payer are required on the order.", TOAST_OPTS);
+      return;
+    }
+
+    setPackageLoading(true);
+    try {
+      await recordsApi.packageAppealRecords({
+        patient_id: form.patient_id,
+        payer_id: form.payer_id,
+        denial_id: denialEvent.denial_id,
+        appeal_letter_content: appealLetterText,
+        order_id: denialEvent.original_order_id,
+        run_id: runState.runId ?? `appeal-${denialEvent.denial_id}`,
+      });
+      toast.success("Appeal package assembled — ready for review", TOAST_OPTS);
+      router.push("/records");
+    } catch (err) {
+      toast.error("Packaging failed", {
+        description: err instanceof Error ? err.message : "Unknown error",
+        ...TOAST_OPTS,
+      });
+    } finally {
+      setPackageLoading(false);
+    }
+  };
+
   const approveAndPackage = async () => {
     setApproved(true);
     setPackageLoading(true);
@@ -1553,10 +1585,18 @@ export default function OrderPage() {
                         />
                       </div>
                       <div className="flex gap-2">
-                        <Button className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => toast.success("Appeal approved for submission", TOAST_OPTS)}>
-                          <CheckSquare className="w-4 h-4" />Approve Appeal
+                        <Button
+                          className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white"
+                          onClick={approveAndPackageAppeal}
+                          disabled={packageLoading}
+                        >
+                          {packageLoading ? (
+                            <><Loader2 className="w-4 h-4 animate-spin" />Packaging…</>
+                          ) : (
+                            <><Package className="w-4 h-4" />Approve &amp; Package Records</>
+                          )}
                         </Button>
-                        <Button variant="outline" className="flex-1 gap-1.5" onClick={() => setAppealLetter(null)}>
+                        <Button variant="outline" className="flex-1 gap-1.5" onClick={() => { setAppealLetter(null); setAppealLetterText(""); }}>
                           <RefreshCw className="w-4 h-4" />Regenerate
                         </Button>
                       </div>

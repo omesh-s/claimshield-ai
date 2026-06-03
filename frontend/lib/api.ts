@@ -188,16 +188,48 @@ export interface PackageSummary {
   assembled_at: string;
 }
 
+export interface PackageRecordsParams {
+  patient_id: string;
+  payer_id: string;
+  run_id?: string;
+  order_id?: string;
+  bundle_type?: string;
+  denial_id?: string;
+  appeal_letter_content?: string;
+}
+
 export const recordsApi = {
-  packageRecords: (params: {
-    run_id: string;
-    patient_id: string;
-    order_id: string;
-    payer_id: string;
-  }) =>
+  packageRecords: (params: PackageRecordsParams) =>
     request<PackagedBundle>("/records/package", {
       method: "POST",
-      body: JSON.stringify(params),
+      body: JSON.stringify({
+        run_id: params.run_id ?? "",
+        order_id: params.order_id ?? "",
+        bundle_type: params.bundle_type ?? "Prior Auth Support",
+        ...params,
+      }),
+    }),
+
+  /** Assemble a denial appeal package (POST /api/v1/package-records). */
+  packageAppealRecords: (params: {
+    patient_id: string;
+    payer_id: string;
+    denial_id: string;
+    appeal_letter_content: string;
+    order_id?: string;
+    run_id?: string;
+  }) =>
+    request<PackagedBundle>("/package-records", {
+      method: "POST",
+      body: JSON.stringify({
+        bundle_type: "Denial Appeal",
+        run_id: params.run_id ?? `appeal-${params.denial_id}`,
+        order_id: params.order_id ?? params.denial_id,
+        patient_id: params.patient_id,
+        payer_id: params.payer_id,
+        denial_id: params.denial_id,
+        appeal_letter_content: params.appeal_letter_content,
+      }),
     }),
 
   listPackages: () => request<PackageSummary[]>("/records/packages"),
