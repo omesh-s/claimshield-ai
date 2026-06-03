@@ -64,33 +64,86 @@ Stack:  FastAPI 0.111 · Python 3.11 · LangGraph 0.1
 
 ## Quick Start
 
-**Requirements:** Python 3.11+, Node.js 18+, Docker Desktop, [Google AI API key](https://aistudio.google.com/app/apikey)
+**Prerequisites:** Python 3.11+, Node.js 18+, Docker Desktop, [Google AI API key](https://aistudio.google.com/app/apikey)
+
+### Step 1 — Clone the repo
 
 ```bash
-# 1. Clone
-git clone <repo-url> && cd ClaimShieldAI
+git clone <repo-url>
+cd ClaimShieldAI
+```
 
-# 2. Start infrastructure
-docker compose up -d        # Postgres 15 + pgvector + Redis 7
+### Step 2 — Start infrastructure (Postgres + Redis)
 
-# 3. Backend
+```bash
+docker compose up -d
+```
+
+Wait ~10 seconds. Postgres listens on `5432`, Redis on `6379`.
+
+### Step 3 — Backend
+
+```bash
 cd backend
-python -m venv .venv
-.venv\Scripts\activate      # Windows  |  source .venv/bin/activate  (macOS/Linux)
-pip install -r requirements.txt
-cp .env.example .env        # then open .env and set GOOGLE_API_KEY=your_key
-python -m app.ingestion.seed --wipe   # embed policy chunks into pgvector (~2 min)
-uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 
-# 4. Frontend (new terminal)
+# Create and activate virtual environment
+python -m venv .venv
+
+# Windows
+.venv\Scripts\activate
+
+# macOS / Linux
+source .venv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+```
+
+Copy and fill the environment file:
+
+```bash
+cp .env.example .env
+```
+
+Open `.env` and set at minimum:
+
+```dotenv
+GOOGLE_API_KEY=your_google_api_key_here
+```
+
+Seed the database (embeds 9 policy chunks via Gemini — takes ~2 min due to API rate limits):
+
+```bash
+python -m app.ingestion.seed --wipe
+```
+
+Start the API server:
+
+```bash
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
+
+Verify:
+
+```bash
+curl http://127.0.0.1:8000/api/v1/health
+# → {"status":"ok","version":"0.1.0","environment":"development"}
+```
+
+### Step 4 — Frontend
+
+Open a new terminal:
+
+```bash
 cd frontend
-npm install && cp .env.example .env.local
+npm install
+cp .env.example .env.local
 npm run dev
 ```
 
-Open **http://localhost:3000** → New Order → Load Demo Case → Submit for Prior Authorization.
+### Step 5 — Open the app
 
-> **Only required env var:** `GOOGLE_API_KEY` in `backend/.env`. All other settings have working defaults.
+Navigate to **http://localhost:3000** → click **New Order** → **Load Demo Case** → select **DEMO-001** → click **Submit for Prior Authorization**.
 
 ---
 
