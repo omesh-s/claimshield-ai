@@ -38,6 +38,7 @@ from app.models.schemas import (
 from app.services.llm import generate_json, generate_text
 from app.services.retrieval import retrieve_policy_chunks
 from app.services.rules import check_pa_requirement
+from app.services.cache import get_cached_score, set_cached_score
 from app.mocks.ehr import get_patient_demographics, get_chart_artifacts
 
 logger = get_logger(__name__)
@@ -198,9 +199,9 @@ PAYER POLICY CONTEXT:
 Write the complete letter now (plain text only):"""
 
 _SCORE_PROMPT = """\
-You are a quality reviewer checking whether a prior authorization letter adequately addresses payer criteria.
+You are a quality reviewer. Score each payer criterion against the drafted prior authorization letter.
 
-PAYER CRITERIA:
+PAYER CRITERIA TO SCORE:
 {criteria_numbered}
 
 RETRIEVED POLICY CONTEXT:
@@ -209,21 +210,27 @@ RETRIEVED POLICY CONTEXT:
 DRAFTED LETTER:
 {draft_letter}
 
-INSTRUCTIONS:
-For each criterion listed above, score how well the drafted letter addresses it:
-- "pass"  = letter clearly addresses this criterion with direct supporting evidence
-- "flag"  = letter mentions this criterion but evidence is weak, indirect, or vague
-- "fail"  = letter does not address this criterion at all
+SCORING RULES (apply strictly and consistently):
+- "pass"  = the letter contains a specific paragraph directly addressing this criterion with named evidence from the patient chart
+- "flag"  = the letter mentions the topic but the supporting evidence is indirect, vague, or incomplete
+- "fail"  = the letter does not address this criterion at all, or the required documentation is explicitly stated as missing
 
-Return ONLY a valid JSON object (no other text):
+You MUST score every criterion listed. Do not skip any.
+Apply the same scoring threshold every time — do not vary based on writing style.
+
+Return ONLY this exact JSON structure (no markdown, no prose, no extra keys):
 {{
   "scores": [
-    {{"criterion": "<criterion text>", "status": "pass|flag|fail", "note": "<brief explanation 1 sentence>"}}
+    {{"criterion": "<exact criterion text from list above>", "status": "pass", "note": "<one sentence>"}},
+    {{"criterion": "<exact criterion text from list above>", "status": "flag", "note": "<one sentence>"}},
+    {{"criterion": "<exact criterion text from list above>", "status": "fail", "note": "<one sentence>"}}
   ],
-  "overall_readiness": "<X of Y criteria fully addressed>",
-  "recommendation": "ready_for_review|needs_revision",
-  "reviewer_notes": "<1-2 sentence summary for staff>"
+  "overall_readiness": "<N of M criteria passed>",
+  "recommendation": "ready_for_review",
+  "reviewer_notes": "<1-2 sentence staff summary>"
 }}
+
+Where recommendation must be exactly "ready_for_review" if zero fail scores, otherwise "needs_revision".
 """
 
 
@@ -613,8 +620,26 @@ async def _run_score(state: PAWorkflowState) -> dict[str, Any]:
     draft = state.get("draft") or {}
     pa_criteria = state.get("pa_criteria", [])
     policy_retrieval = state.get("policy_retrieval") or {}
+    order = state.get("order") or {}
 
     _emit(state, "score", "running")
+
+    # --- Score cache lookup (60-min TTL) -----------------------------------
+    patient_id = order.get("patient_id", "")
+    payer_id   = order.get("payer_id", "")
+    cpt_code   = order.get("cpt_code", "")
+    cached_scoring = await get_cached_score(patient_id, payer_id, cpt_code)
+    if cached_scoring:
+        logger.info("workflow.score.cache_hit", patient_id=patient_id, payer_id=payer_id, cpt_code=cpt_code)
+        _emit(state, "score", "complete", {
+            "readiness_score": cached_scoring.get("readiness_score", 0),
+            "pass": cached_scoring.get("pass_count", 0),
+            "flag": cached_scoring.get("flag_count", 0),
+            "fail": cached_scoring.get("fail_count", 0),
+            "recommendation": "cache_hit",
+        })
+        return {"scoring": cached_scoring, "completed": True}
+    # -----------------------------------------------------------------------
 
     letter_text = draft.get("justification_letter", {}).get("content", "")
     chunks = policy_retrieval.get("chunks", [])
@@ -686,7 +711,12 @@ async def _run_score(state: PAWorkflowState) -> dict[str, Any]:
         "recommendation": rec,
     })
 
-    return {"scoring": scoring_result.model_dump(mode="json"), "completed": True}
+    scoring_dict = scoring_result.model_dump(mode="json")
+    # Write score to cache so repeat runs return identical results
+    if patient_id and payer_id and cpt_code:
+        await set_cached_score(patient_id, payer_id, cpt_code, scoring_dict)
+
+    return {"scoring": scoring_dict, "completed": True}
 
 
 # ---------------------------------------------------------------------------

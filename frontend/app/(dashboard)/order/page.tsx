@@ -39,6 +39,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ordersApi, denialApi, demoCaseApi, recordsApi } from "@/lib/api";
+import { getDeadlineRule, calcDeadline } from "@/lib/filing-deadlines";
 import type {
   OrderRequest,
   WorkflowResult,
@@ -176,7 +177,7 @@ function CircularProgress({ pct, color }: { pct: number; color: string }) {
   const circ = 2 * Math.PI * r;
   const dash = Math.min((pct / 100) * circ, circ);
   return (
-    <svg width="56" height="56" viewBox="0 0 56 56" className="flex-shrink-0">
+    <svg width="56" height="56" viewBox="0 0 56 56" className="shrink-0">
       <circle cx="28" cy="28" r={r} fill="none" stroke="#e5e7eb" strokeWidth="4" />
       <circle
         cx="28" cy="28" r={r} fill="none" stroke={color} strokeWidth="4"
@@ -243,7 +244,7 @@ function WorkflowTimeline({
 
           return (
             <div key={step.key} className="flex items-center gap-2.5">
-              <div className="w-6 flex-shrink-0 flex items-center justify-center">
+              <div className="w-6 shrink-0 flex items-center justify-center">
                 {state.status === "running" ? (
                   <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
                 ) : state.status === "complete" ? (
@@ -425,7 +426,7 @@ function GapAnalysisCard({ gap }: { gap: GapAnalysisResult }) {
                 : "bg-amber-50 border border-amber-100"
             }`}
           >
-            <div className="mt-0.5 flex-shrink-0">
+            <div className="mt-0.5 shrink-0">
               {c.status === "met" ? (
                 <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
               ) : c.status === "missing" ? (
@@ -489,15 +490,15 @@ function PatientImpactCard({ impact }: { impact: PatientImpact }) {
         </p>
         <div className="space-y-1.5">
           <div className="flex items-start gap-2">
-            <Clock className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <Clock className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
             <p className="text-xs text-blue-900"><span className="font-medium">Time saved:</span> {impact.estimated_wait_time_saved}</p>
           </div>
           <div className="flex items-start gap-2">
-            <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
             <p className="text-xs text-blue-900"><span className="font-medium">Auth risk:</span> {impact.auth_failure_risk}</p>
           </div>
           <div className="flex items-start gap-2">
-            <Info className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <Info className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
             <p className="text-xs text-blue-900">{impact.patient_note}</p>
           </div>
         </div>
@@ -507,13 +508,14 @@ function PatientImpactCard({ impact }: { impact: PatientImpact }) {
 }
 
 // ---------------------------------------------------------------------------
-// Filing deadline widget
+// Filing deadline widget — uses FILING_DEADLINES as single source of truth
 // ---------------------------------------------------------------------------
-function FilingDeadlineWidget({ payerId }: { payerId: string }) {
-  const deadline = payerId === "bcbs_tx" ? { days: 45, rule: "95-day TX filing limit" }
-    : payerId === "unitedhealthcare" ? { days: 32, rule: "90-day filing limit" }
-    : { days: 28, rule: "90-day filing limit" };
-  const urgency = deadline.days >= 30 ? "green" : deadline.days >= 14 ? "amber" : "red";
+function FilingDeadlineWidget({ payerId, serviceDateIso }: { payerId: string; serviceDateIso?: string }) {
+  const rule = getDeadlineRule(payerId);
+  // If the order hasn't been submitted yet we use today as the service date
+  const serviceDate = serviceDateIso ?? new Date().toISOString().split("T")[0];
+  const { daysRemaining } = calcDeadline(serviceDate, rule.days);
+  const urgency = daysRemaining > 30 ? "green" : daysRemaining >= 15 ? "amber" : "red";
   const colorMap = {
     green: "bg-emerald-50 border-emerald-200 text-emerald-800",
     amber: "bg-amber-50 border-amber-200 text-amber-800",
@@ -527,12 +529,12 @@ function FilingDeadlineWidget({ payerId }: { payerId: string }) {
             <Clock className={`w-4 h-4 ${urgency === "green" ? "text-emerald-600" : urgency === "amber" ? "text-amber-600" : "text-red-600"}`} />
             <div>
               <p className="text-xs font-medium">Filing Deadline</p>
-              <p className="text-[10px] text-current/70">{deadline.rule} · TX</p>
+              <p className="text-[10px] text-current/70">{rule.days}-day rule · {rule.state}</p>
             </div>
           </div>
           <div className="text-right">
             <p className={`text-2xl font-bold ${urgency === "green" ? "text-emerald-700" : urgency === "amber" ? "text-amber-700" : "text-red-700"}`}>
-              {deadline.days}
+              {daysRemaining}
             </p>
             <p className="text-[10px] text-current/70">days left</p>
           </div>
@@ -589,7 +591,7 @@ function ScoreCard({
         {scoring.scores.map((s, i) => (
           <div key={i} className="flex items-start gap-2">
             <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold flex-shrink-0 mt-0.5 ${
+              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 mt-0.5 ${
                 s.score === "pass"
                   ? "bg-emerald-100 text-emerald-700"
                   : s.score === "flag"
@@ -1050,7 +1052,7 @@ export default function OrderPage() {
                       ))}
                     </div>
                   </div>
-                  <Button size="sm" className="text-xs flex-shrink-0" onClick={(e) => { e.stopPropagation(); loadDemoCase(demo); }}>
+                  <Button size="sm" className="text-xs shrink-0" onClick={(e) => { e.stopPropagation(); loadDemoCase(demo); }}>
                     Load <ChevronRight className="w-3 h-3" />
                   </Button>
                 </div>
@@ -1065,7 +1067,7 @@ export default function OrderPage() {
         <DialogContent className="max-w-md" showCloseButton={false}>
           <DialogHeader>
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center shrink-0">
                 <AlertOctagon className="w-5 h-5 text-red-600" />
               </div>
               <DialogTitle className="text-red-700">Unusual Code Pairing Detected</DialogTitle>
@@ -1126,11 +1128,11 @@ export default function OrderPage() {
 
         <div className="flex-1 flex overflow-hidden">
           {/* ── Left column 42% ── */}
-          <div className="w-[42%] flex-shrink-0 overflow-y-auto border-r border-border p-4 space-y-3">
+          <div className="w-[42%] shrink-0 overflow-y-auto border-r border-border p-4 space-y-3">
             {/* Scenario banner */}
             {loadedCase && (
               <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-medium ${loadedCase.bannerClass}`}>
-                <FileText className="w-3.5 h-3.5 flex-shrink-0" />
+                <FileText className="w-3.5 h-3.5 shrink-0" />
                 {loadedCase.bannerLabel}
                 <span className="ml-auto text-[10px] opacity-70">{loadedCase.case_id}</span>
               </div>
@@ -1197,12 +1199,12 @@ export default function OrderPage() {
             {/* Error */}
             {hasError && runState.error && (
               <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200">
-                <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 flex-shrink-0" />
+                <AlertTriangle className="w-4 h-4 text-red-600 mt-0.5 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-medium text-red-700">Workflow error</p>
                   <p className="text-xs text-red-600 mt-0.5">{runState.error}</p>
                 </div>
-                <Button size="sm" variant="outline" className="text-xs flex-shrink-0" onClick={submitOrder}>
+                <Button size="sm" variant="outline" className="text-xs shrink-0" onClick={submitOrder}>
                   <RefreshCw className="w-3 h-3" />Retry
                 </Button>
               </div>
@@ -1304,7 +1306,7 @@ export default function OrderPage() {
 
                     {(isRunning || isComplete) && (
                       <div className="flex items-start gap-2 p-3 rounded-md bg-amber-50 border border-amber-200">
-                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                         <p className="text-xs text-amber-800">
                           <span className="font-semibold">AI-generated draft.</span> Staff review required before submission to payer. Edit directly below.
                         </p>
@@ -1381,7 +1383,7 @@ export default function OrderPage() {
                   {appealLetter && !appealLoading && (
                     <div className="space-y-3">
                       <div className="flex items-start gap-2 p-3 rounded-md bg-amber-50 border border-amber-200">
-                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                         <p className="text-xs text-amber-800">
                           <span className="font-semibold">AI-generated appeal draft.</span> Verify all guideline citations before submission.
                         </p>
@@ -1456,7 +1458,7 @@ export default function OrderPage() {
                         <CardContent className="pb-3 space-y-1.5">
                           {packagedBundle.submission_checklist.map((item, i) => (
                             <div key={i} className={`flex items-start gap-2 p-2 rounded-md text-xs ${item.status === "complete" ? "bg-emerald-50 border border-emerald-100" : item.status === "pending" ? "bg-blue-50 border border-blue-100" : "bg-red-50 border border-red-100"}`}>
-                              {item.status === "complete" ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 flex-shrink-0" /> : item.status === "pending" ? <Clock className="w-3.5 h-3.5 text-blue-600 mt-0.5 flex-shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 text-red-600 mt-0.5 flex-shrink-0" />}
+                              {item.status === "complete" ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 mt-0.5 shrink-0" /> : item.status === "pending" ? <Clock className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" /> : <AlertTriangle className="w-3.5 h-3.5 text-red-600 mt-0.5 shrink-0" />}
                               <div>
                                 <p className="font-medium text-foreground">{item.item}</p>
                                 {item.note && <p className="text-muted-foreground text-[10px] mt-0.5">{item.note}</p>}
@@ -1480,7 +1482,7 @@ export default function OrderPage() {
                                   <p className="text-xs font-medium text-foreground">{a.title}</p>
                                   <p className="text-[10px] text-muted-foreground">{a.date} · {a.provider}</p>
                                 </div>
-                                <Badge className="text-[10px] bg-muted text-muted-foreground border-border flex-shrink-0">
+                                <Badge className="text-[10px] bg-muted text-muted-foreground border-border shrink-0">
                                   {a.artifact_type.replace(/_/g, " ")}
                                 </Badge>
                               </div>
@@ -1491,7 +1493,7 @@ export default function OrderPage() {
 
                       {packagedBundle.notes && (
                         <div className="flex items-start gap-2 p-3 rounded-md bg-amber-50 border border-amber-200">
-                          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                           <p className="text-xs text-amber-800">{packagedBundle.notes}</p>
                         </div>
                       )}

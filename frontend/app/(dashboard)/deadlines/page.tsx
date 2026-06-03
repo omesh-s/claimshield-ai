@@ -3,65 +3,60 @@
 import { Clock, AlertTriangle, CheckCircle2, XCircle, Info } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { FILING_DEADLINES, calcDeadline } from "@/lib/filing-deadlines";
 
 // ---------------------------------------------------------------------------
-// Seeded deadline rows — matches Phase 6 spec
+// Seeded deadline rows — uses FILING_DEADLINES as single source of truth
 // ---------------------------------------------------------------------------
-const today = new Date();
 const daysAgo = (n: number) => {
-  const d = new Date(today);
+  const d = new Date();
   d.setDate(d.getDate() - n);
   return d.toISOString().split("T")[0];
 };
-const daysFromNow = (n: number) => {
-  const d = new Date(today);
-  d.setDate(d.getDate() + n);
-  return d.toISOString().split("T")[0];
-};
+
+function makeRow(
+  id: string,
+  patientName: string,
+  patientId: string,
+  payerId: string,
+  cptCode: string,
+  serviceDaysAgo: number,
+  note: string,
+) {
+  const rule = FILING_DEADLINES[payerId];
+  const serviceDate = daysAgo(serviceDaysAgo);
+  const { daysRemaining } = calcDeadline(serviceDate, rule.days);
+  const status: "ok" | "warning" | "critical" =
+    daysRemaining > 30 ? "ok" : daysRemaining >= 15 ? "warning" : "critical";
+  return {
+    id,
+    patientName,
+    patientId,
+    payer: rule.payerName,
+    payerId,
+    cptCode,
+    serviceDate,
+    deadlineDays: rule.days,
+    daysRemaining,
+    status,
+    rule: rule.rule,
+    note,
+  };
+}
 
 const DEADLINE_ROWS = [
-  {
-    id: "FD-001",
-    patientName: "James Mitchell",
-    patientId: "P001",
-    payer: "BCBS Texas PPO",
-    payerId: "bcbs_tx",
-    cptCode: "75571",
-    serviceDate: daysAgo(14),
-    deadlineDays: 95,
-    daysRemaining: 81,
-    status: "ok" as const,
-    rule: "Texas Insurance Code §1301.137",
-    note: "Cardiology note still pending — obtain before day 30 to avoid retroactive PA issues.",
-  },
-  {
-    id: "FD-002",
-    patientName: "Sarah Chen",
-    patientId: "P002",
-    payer: "United Healthcare HMO",
-    payerId: "unitedhealthcare",
-    cptCode: "75561",
-    serviceDate: daysAgo(45),
-    deadlineDays: 90,
-    daysRemaining: 45,
-    status: "warning" as const,
-    rule: "UHC Texas Provider Manual 2024, Ch. 5",
-    note: "Approaching midpoint. Ensure PA is obtained before service if not already completed.",
-  },
-  {
-    id: "FD-003",
-    patientName: "Robert Torres",
-    patientId: "P003",
-    payer: "Aetna PPO",
-    payerId: "aetna",
-    cptCode: "75571",
-    serviceDate: daysAgo(80),
-    deadlineDays: 95,
-    daysRemaining: 15,
-    status: "critical" as const,
-    rule: "Texas Insurance Code §1301.137",
-    note: "URGENT: 15 days remaining. Immediate action required to submit before deadline.",
-  },
+  makeRow(
+    "FD-001", "James Mitchell", "P001", "bcbs_tx", "75571", 14,
+    "Cardiology note still pending — obtain before day 30 to avoid retroactive PA issues.",
+  ),
+  makeRow(
+    "FD-002", "Sarah Chen", "P002", "unitedhealthcare", "75561", 45,
+    "Approaching midpoint. Ensure PA is obtained before service if not already completed.",
+  ),
+  makeRow(
+    "FD-003", "Robert Torres", "P003", "aetna", "75571", 80,
+    "URGENT: approaching deadline. Immediate action required to submit before deadline.",
+  ),
 ];
 
 const STATUS_CONFIG = {
@@ -103,7 +98,7 @@ export default function DeadlinesPage() {
 
       {/* Disclaimer */}
       <div className="flex items-start gap-2.5 p-3.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800">
-        <Info className="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
+        <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
         <p>
           <span className="font-semibold">Filing deadlines vary by payer and state.</span> Rules shown
           are seeded demo data. Verify with your payer contracts before relying on these dates.
@@ -115,7 +110,7 @@ export default function DeadlinesPage() {
       <div className="grid grid-cols-3 gap-3">
         <Card className="border-emerald-100">
           <CardContent className="pt-4 pb-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-5 h-5 text-emerald-600" />
             </div>
             <div>
@@ -126,7 +121,7 @@ export default function DeadlinesPage() {
         </Card>
         <Card className="border-amber-100">
           <CardContent className="pt-4 pb-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-5 h-5 text-amber-600" />
             </div>
             <div>
@@ -137,7 +132,7 @@ export default function DeadlinesPage() {
         </Card>
         <Card className="border-red-100">
           <CardContent className="pt-4 pb-4 flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
               <XCircle className="w-5 h-5 text-red-600" />
             </div>
             <div>
@@ -221,7 +216,7 @@ export default function DeadlinesPage() {
           const Icon = cfg.Icon;
           return (
             <div key={row.id} className={`flex items-start gap-2.5 p-3 rounded-lg border text-xs ${row.status === "ok" ? "bg-blue-50 border-blue-100 text-blue-800" : row.status === "warning" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-red-50 border-red-200 text-red-800"}`}>
-              <Icon className={`w-4 h-4 flex-shrink-0 mt-0.5 ${cfg.iconClass}`} />
+              <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${cfg.iconClass}`} />
               <div>
                 <span className="font-semibold">{row.patientName}:</span> {row.note}
               </div>

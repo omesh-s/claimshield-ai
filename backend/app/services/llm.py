@@ -20,23 +20,15 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
-settings = get_settings()
 
 _LLM_TIMEOUT_SECONDS = 30  # hard timeout per Gemini call
 
-# Configure SDK once at import time
-genai.configure(api_key=settings.google_api_key)
+# Configure SDK once at import time — use settings via get_settings() to pick
+# up any config changes without requiring a full module reload.
+def _configure_sdk() -> None:
+    genai.configure(api_key=get_settings().google_api_key)
 
-_generation_config = genai.types.GenerationConfig(
-    temperature=settings.llm_temperature,
-    max_output_tokens=settings.llm_max_tokens,
-    response_mime_type="application/json",
-)
-
-_text_generation_config = genai.types.GenerationConfig(
-    temperature=settings.llm_temperature,
-    max_output_tokens=settings.llm_max_tokens,
-)
+_configure_sdk()
 
 _safety_settings = [
     {"category": "HARM_CATEGORY_HARASSMENT",        "threshold": "BLOCK_NONE"},
@@ -47,9 +39,16 @@ _safety_settings = [
 
 
 def _get_model(json_mode: bool = True) -> genai.GenerativeModel:
+    """Build a Gemini model instance using live settings (temperature always 0.0)."""
+    cfg = get_settings()
+    generation_config = genai.types.GenerationConfig(
+        temperature=cfg.llm_temperature,   # must be 0.0 — see config.py default
+        max_output_tokens=cfg.llm_max_tokens,
+        **({"response_mime_type": "application/json"} if json_mode else {}),
+    )
     return genai.GenerativeModel(
-        model_name=settings.gemini_model,
-        generation_config=_generation_config if json_mode else _text_generation_config,
+        model_name=cfg.gemini_model,
+        generation_config=generation_config,
         safety_settings=_safety_settings,
     )
 

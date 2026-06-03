@@ -170,6 +170,17 @@ export const demoCaseApi = {
 // Record packaging
 // ---------------------------------------------------------------------------
 
+export interface PackageSummary {
+  bundle_id: string;
+  patient_id: string;
+  patient_name: string;
+  payer_id: string;
+  payer_name: string;
+  bundle_type: string;
+  status: string;
+  assembled_at: string;
+}
+
 export const recordsApi = {
   packageRecords: (params: {
     run_id: string;
@@ -181,6 +192,8 @@ export const recordsApi = {
       method: "POST",
       body: JSON.stringify(params),
     }),
+
+  listPackages: () => request<PackageSummary[]>("/records/packages"),
 };
 
 // ---------------------------------------------------------------------------

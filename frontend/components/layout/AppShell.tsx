@@ -89,7 +89,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="flex h-full min-h-screen">
       {/* Sidebar */}
-      <aside className="w-60 flex-shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
+      <aside className="w-60 shrink-0 bg-sidebar text-sidebar-foreground flex flex-col border-r border-sidebar-border">
         {/* Logo */}
         <div className="flex items-center gap-2.5 px-4 py-4 border-b border-sidebar-border">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-sidebar-primary">
@@ -121,7 +121,7 @@ export function AppShell({ children }: AppShellProps) {
                     : "text-sidebar-foreground/60 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
                 )}
               >
-                <Icon className="w-4 h-4 flex-shrink-0" />
+                <Icon className="w-4 h-4 shrink-0" />
                 <span className="flex-1">{label}</span>
                 {active && <ChevronRight className="w-3 h-3 opacity-50" />}
               </Link>
@@ -171,7 +171,7 @@ export function AppShell({ children }: AppShellProps) {
         </div>
 
         {/* Top bar */}
-        <header className="h-13 flex items-center justify-between px-5 border-b border-border bg-card flex-shrink-0">
+        <header className="h-13 flex items-center justify-between px-5 border-b border-border bg-card shrink-0">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 text-primary" />
             <span className="text-sm font-medium text-foreground">ClaimShield AI</span>

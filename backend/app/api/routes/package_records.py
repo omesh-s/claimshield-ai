@@ -1,7 +1,8 @@
 """
 Record packaging — assembles a payer-ready clinical record bundle.
 
-POST /records/package
+POST /records/package  — assemble and save a bundle
+GET  /records/packages — list all saved bundles (sorted newest-first)
 """
 from __future__ import annotations
 
@@ -18,6 +19,31 @@ from app.models.schemas import ChartArtifact, PatientDemographics, ErrorResponse
 
 logger = get_logger(__name__)
 router = APIRouter(prefix="/records", tags=["records"])
+
+# ---------------------------------------------------------------------------
+# In-memory package store — persists for the lifetime of the server process.
+# Seeded with the canonical DEMO-001 bundle so the Recent Packages table is
+# never empty on first load.
+# ---------------------------------------------------------------------------
+_PACKAGE_STORE: list[dict] = [
+    {
+        "bundle_id": "BUNDLE-89FF962F",
+        "patient_id": "P001",
+        "patient_name": "James Mitchell",
+        "payer_id": "bcbs_tx",
+        "payer_name": "BCBS Texas PPO",
+        "bundle_type": "Prior Auth Support",
+        "status": "Ready for Review",
+        "assembled_at": "2026-06-02T10:00:00",
+    }
+]
+
+_PAYER_DISPLAY = {
+    "bcbs_tx": "BCBS Texas PPO",
+    "aetna": "Aetna",
+    "united": "United Healthcare",
+    "unitedhealthcare": "United Healthcare",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -186,4 +212,40 @@ async def package_records(request: PackageRecordsRequest) -> PackagedBundle:
         checklist_items=len(checklist),
     )
 
+    # Persist to in-memory store so GET /records/packages can return it
+    patient_name = (
+        f"{demographics.first_name} {demographics.last_name}"
+        if demographics else request.patient_id
+    )
+    _PACKAGE_STORE.insert(0, {
+        "bundle_id": bundle.bundle_id,
+        "patient_id": patient_id,
+        "patient_name": patient_name,
+        "payer_id": request.payer_id,
+        "payer_name": _PAYER_DISPLAY.get(request.payer_id, request.payer_id),
+        "bundle_type": "Prior Auth Support",
+        "status": "Ready for Review",
+        "assembled_at": bundle.assembled_at.isoformat(),
+    })
+
     return bundle
+
+
+class PackageSummary(BaseModel):
+    bundle_id: str
+    patient_id: str
+    patient_name: str
+    payer_id: str
+    payer_name: str
+    bundle_type: str
+    status: str
+    assembled_at: str
+
+
+@router.get("/packages", response_model=list[PackageSummary])
+async def list_packages() -> list[PackageSummary]:
+    """
+    Return all assembled bundles sorted by assembled_at descending.
+    Includes the seeded DEMO-001 bundle so the table is never empty.
+    """
+    return [PackageSummary(**p) for p in _PACKAGE_STORE]

@@ -24,7 +24,6 @@ from app.core.config import get_settings
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
-settings = get_settings()
 
 _redis_client: aioredis.Redis | None = None
 
@@ -33,7 +32,7 @@ async def get_redis() -> aioredis.Redis:
     global _redis_client
     if _redis_client is None:
         _redis_client = aioredis.from_url(
-            settings.redis_url,
+            get_settings().redis_url,
             encoding="utf-8",
             decode_responses=True,
         )
@@ -76,7 +75,7 @@ async def set_cached_policy_chunks(
         r = await get_redis()
         await r.setex(
             _policy_key(payer_id, cpt_code),
-            settings.policy_chunk_cache_ttl_seconds,
+            get_settings().policy_chunk_cache_ttl_seconds,
             json.dumps(data),
         )
         logger.debug("cache.policy_chunks.set", payer_id=payer_id, cpt_code=cpt_code)
@@ -109,7 +108,7 @@ async def set_workflow_state(run_id: str, state: dict[str, Any]) -> None:
         r = await get_redis()
         await r.setex(
             _workflow_key(run_id),
-            settings.workflow_state_ttl_seconds,
+            get_settings().workflow_state_ttl_seconds,
             json.dumps(state, default=str),
         )
     except Exception as exc:
@@ -135,19 +134,61 @@ async def check_rate_limit(client_id: str) -> tuple[bool, int]:
         key = _rate_key(client_id)
         pipe = r.pipeline()
         pipe.incr(key)
-        pipe.expire(key, settings.rate_limit_window_seconds)
+        s = get_settings()
+        pipe.expire(key, s.rate_limit_window_seconds)
         results = await pipe.execute()
         count = int(results[0])
-        allowed = count <= settings.rate_limit_max_requests
-        remaining = max(0, settings.rate_limit_max_requests - count)
+        allowed = count <= s.rate_limit_max_requests
+        remaining = max(0, s.rate_limit_max_requests - count)
         return allowed, remaining
     except Exception as exc:
         logger.warning("cache.rate_limit.error", error=str(exc))
-        return True, settings.rate_limit_max_requests
+        return True, get_settings().rate_limit_max_requests
 
 
 # ---------------------------------------------------------------------------
-# 4. Job status tracking
+# 4. Scoring result cache — key: score:{patient_id}:{payer_id}:{cpt_code}
+#    TTL: 3600s (60 min) — prevents non-deterministic re-scoring same input
+# ---------------------------------------------------------------------------
+
+_SCORE_CACHE_TTL = 3600  # 60 minutes
+
+
+def _score_key(patient_id: str, payer_id: str, cpt_code: str) -> str:
+    return f"score:{patient_id}:{payer_id}:{cpt_code}"
+
+
+async def get_cached_score(patient_id: str, payer_id: str, cpt_code: str) -> dict | None:
+    """Return cached scoring result dict, or None on miss/error."""
+    try:
+        r = await get_redis()
+        raw = await r.get(_score_key(patient_id, payer_id, cpt_code))
+        if raw:
+            logger.debug("cache.score.hit", patient_id=patient_id, payer_id=payer_id, cpt_code=cpt_code)
+            return json.loads(raw)
+        logger.debug("cache.score.miss", patient_id=patient_id, payer_id=payer_id, cpt_code=cpt_code)
+        return None
+    except Exception as exc:
+        logger.warning("cache.score.get_error", error=str(exc))
+        return None
+
+
+async def set_cached_score(patient_id: str, payer_id: str, cpt_code: str, data: dict) -> None:
+    """Cache scoring result for 60 minutes. Silently swallows errors."""
+    try:
+        r = await get_redis()
+        await r.setex(
+            _score_key(patient_id, payer_id, cpt_code),
+            _SCORE_CACHE_TTL,
+            json.dumps(data, default=str),
+        )
+        logger.debug("cache.score.set", patient_id=patient_id, payer_id=payer_id, cpt_code=cpt_code)
+    except Exception as exc:
+        logger.warning("cache.score.set_error", error=str(exc))
+
+
+# ---------------------------------------------------------------------------
+# 5. Job status tracking
 # ---------------------------------------------------------------------------
 
 def _job_key(run_id: str) -> str:
@@ -159,7 +200,7 @@ async def set_job_status(run_id: str, status: str, detail: str | None = None) ->
     try:
         r = await get_redis()
         payload = json.dumps({"status": status, "detail": detail})
-        await r.setex(_job_key(run_id), settings.workflow_state_ttl_seconds, payload)
+        await r.setex(_job_key(run_id), get_settings().workflow_state_ttl_seconds, payload)
     except Exception as exc:
         logger.warning("cache.job_status.set_error", run_id=run_id, error=str(exc))
 

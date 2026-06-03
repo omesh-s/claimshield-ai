@@ -51,7 +51,7 @@ class Settings(BaseSettings):
     embedding_dimensions: int = 3072
 
     # LLM settings
-    llm_temperature: float = 0.1
+    llm_temperature: float = 0.0
     llm_max_tokens: int = 4096
     llm_timeout_seconds: int = 60
     llm_max_retries: int = 3
