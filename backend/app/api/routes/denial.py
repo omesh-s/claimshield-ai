@@ -10,8 +10,10 @@ import uuid
 from datetime import datetime
 
 from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
 from app.core.logging import get_logger
+from app.api.routes.package_records import count_denial_appeal_packages
 from app.data.demo_cases import DENIAL_EVENTS, APPEAL_CITATIONS
 from app.data.patients import (
     ORDERING_PROVIDER_CONTACT,
@@ -172,6 +174,16 @@ Return ONLY the appeal letter text."""
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
+
+
+class AppealsCountResponse(BaseModel):
+    count: int
+
+
+@router.get("/appeals/count", response_model=AppealsCountResponse)
+async def get_appeals_count() -> AppealsCountResponse:
+    """Live count of Denial Appeal packages assembled in this server session."""
+    return AppealsCountResponse(count=count_denial_appeal_packages())
 
 
 @router.get("/{denial_id}", response_model=DenialEvent)

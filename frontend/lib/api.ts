@@ -157,6 +157,9 @@ export const denialApi = {
   /** Fetch a denial event by ID */
   getDenial: (denialId: string) => request<DenialEvent>(`/denial/${denialId}`),
 
+  /** Count of Denial Appeal packages assembled (session store) */
+  getAppealsCount: () => request<{ count: number }>("/denial/appeals/count"),
+
   /** Generate a draft appeal letter for a denial event */
   generateAppeal: (denial: DenialEvent) =>
     request<AppealLetter>("/denial/appeal", {
@@ -196,6 +199,8 @@ export interface PackageRecordsParams {
   bundle_type?: string;
   denial_id?: string;
   appeal_letter_content?: string;
+  /** True when staff approved AI output before packaging (New Order / Denial flows). */
+  staff_approved?: boolean;
 }
 
 export const recordsApi = {
@@ -206,6 +211,7 @@ export const recordsApi = {
         run_id: params.run_id ?? "",
         order_id: params.order_id ?? "",
         bundle_type: params.bundle_type ?? "Prior Auth Support",
+        staff_approved: params.staff_approved ?? false,
         ...params,
       }),
     }),
@@ -223,6 +229,7 @@ export const recordsApi = {
       method: "POST",
       body: JSON.stringify({
         bundle_type: "Denial Appeal",
+        staff_approved: true,
         run_id: params.run_id ?? `appeal-${params.denial_id}`,
         order_id: params.order_id ?? params.denial_id,
         patient_id: params.patient_id,
@@ -233,6 +240,14 @@ export const recordsApi = {
     }),
 
   listPackages: () => request<PackageSummary[]>("/records/packages"),
+
+  getPackage: (bundleId: string) =>
+    request<PackagedBundle>(`/package-records/${encodeURIComponent(bundleId)}`),
+
+  approvePackage: (bundleId: string) =>
+    request<PackageSummary>(`/package-records/${encodeURIComponent(bundleId)}/approve`, {
+      method: "PATCH",
+    }),
 };
 
 // ---------------------------------------------------------------------------

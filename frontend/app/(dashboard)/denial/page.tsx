@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -45,9 +45,8 @@ const WORKFLOW_STEPS = [
   { num: "05", icon: Star,     label: "Score",     color: "text-amber-600",  bg: "bg-amber-50" },
 ];
 
-const STATS = [
-  { value: "320", label: "Appeals Generated", icon: FileText, color: "text-blue-600", bg: "bg-blue-50", border: "border-blue-100" },
-  { value: "~73%", label: "First-Round Overturn Rate", icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
+const BENCHMARK_STATS = [
+  { value: "~73%", label: "Industry Overturn Rate", icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
   { value: "2.1 Min", label: "Avg. Time Per Appeal", icon: Clock, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
 ];
 
@@ -77,7 +76,21 @@ export default function DenialPage() {
   const [appeal, setAppeal] = useState<AppealLetter | null>(null);
   const [letterText, setLetterText] = useState("");
   const [packageLoading, setPackageLoading] = useState(false);
+  const [appealsCount, setAppealsCount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchAppealsCount = useCallback(async () => {
+    try {
+      const { count } = await denialApi.getAppealsCount();
+      setAppealsCount(count);
+    } catch {
+      setAppealsCount(0);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAppealsCount();
+  }, [fetchAppealsCount]);
 
   function field(key: keyof FormState, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -182,6 +195,7 @@ export default function DenialPage() {
         run_id: `appeal-${denialId}`,
       });
       toast.success("Appeal package assembled — ready for review", { duration: 4000 });
+      fetchAppealsCount();
       router.push("/records");
     } catch (err) {
       toast.error("Packaging failed", {
@@ -220,7 +234,18 @@ export default function DenialPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
-        {STATS.map(({ value, label, icon: Icon, color, bg, border }) => (
+        <Card className="border border-blue-100">
+          <CardContent className="p-6">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
+              <FileText className="w-4 h-4 text-blue-600" />
+            </div>
+            <p className="text-3xl font-bold text-foreground leading-tight">
+              {appealsCount === null ? "—" : appealsCount}
+            </p>
+            <p className="text-sm font-medium text-muted-foreground mt-1">Appeals Generated</p>
+          </CardContent>
+        </Card>
+        {BENCHMARK_STATS.map(({ value, label, icon: Icon, color, bg, border }) => (
           <Card key={label} className={`border ${border}`}>
             <CardContent className="p-6">
               <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center mb-3`}>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, Fragment } from "react";
 import { toast } from "sonner";
 import {
   Package,
@@ -41,9 +41,32 @@ const BUNDLE_TYPES = [
   "Payer Audit",
 ];
 
+const STATUS_READY_FOR_REVIEW = "Ready for Review";
+
 /** Same patient + payer + bundle_type; earliest assembled_at is the original. */
 function packageGroupKey(row: PackageSummary): string {
   return `${row.patient_id}|${row.payer_id}|${row.bundle_type}`;
+}
+
+function isReadyForReviewStatus(status: string): boolean {
+  return status === STATUS_READY_FOR_REVIEW;
+}
+
+function isApprovedPackageStatus(status: string): boolean {
+  return status.startsWith("Approved");
+}
+
+function packageStatusBadge(status: string): { label: string; className: string } {
+  if (isApprovedPackageStatus(status)) {
+    return {
+      label: "Approved",
+      className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+    };
+  }
+  return {
+    label: status,
+    className: "bg-amber-50 text-amber-800 border-amber-200",
+  };
 }
 
 function computeDuplicateBundleIds(packages: PackageSummary[]): Set<string> {
@@ -131,6 +154,10 @@ export default function RecordsPage() {
   const [packages, setPackages] = useState<PackageSummary[]>([]);
   const [packagesLoading, setPackagesLoading] = useState(true);
   const [duplicateBannerDismissed, setDuplicateBannerDismissed] = useState(false);
+  const [expandedBundleId, setExpandedBundleId] = useState<string | null>(null);
+  const [reviewBundle, setReviewBundle] = useState<PackagedBundle | null>(null);
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [approveLoadingId, setApproveLoadingId] = useState<string | null>(null);
 
   const duplicateBundleIds = useMemo(() => computeDuplicateBundleIds(packages), [packages]);
   const duplicateCount = duplicateBundleIds.size;
@@ -158,6 +185,54 @@ export default function RecordsPage() {
 
   function field(key: keyof FormState, value: string) {
     setForm((f) => ({ ...f, [key]: value }));
+  }
+
+  async function openReview(bundleId: string) {
+    if (expandedBundleId === bundleId) {
+      setExpandedBundleId(null);
+      setReviewBundle(null);
+      return;
+    }
+    setExpandedBundleId(bundleId);
+    setReviewBundle(null);
+    setReviewLoading(true);
+    try {
+      const detail = await recordsApi.getPackage(bundleId);
+      setReviewBundle(detail);
+    } catch (err) {
+      setExpandedBundleId(null);
+      toast.error("Failed to load bundle", {
+        description: err instanceof Error ? err.message : "Unknown error",
+        duration: 4000,
+      });
+    } finally {
+      setReviewLoading(false);
+    }
+  }
+
+  function dismissReview() {
+    setExpandedBundleId(null);
+    setReviewBundle(null);
+  }
+
+  async function approveFromReview(bundleId: string) {
+    setApproveLoadingId(bundleId);
+    try {
+      const updated = await recordsApi.approvePackage(bundleId);
+      setPackages((prev) =>
+        prev.map((p) => (p.bundle_id === bundleId ? { ...p, status: updated.status } : p)),
+      );
+      setExpandedBundleId(null);
+      setReviewBundle(null);
+      toast.success("Bundle approved", { duration: 4000 });
+    } catch (err) {
+      toast.error("Approval failed", {
+        description: err instanceof Error ? err.message : "Unknown error",
+        duration: 4000,
+      });
+    } finally {
+      setApproveLoadingId(null);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -435,14 +510,19 @@ export default function RecordsPage() {
                     <th className="text-left text-xs font-medium text-muted-foreground py-2 pr-4">Payer</th>
                     <th className="text-left text-xs font-medium text-muted-foreground py-2 pr-4">Type</th>
                     <th className="text-left text-xs font-medium text-muted-foreground py-2 pr-4">Status</th>
-                    <th className="text-left text-xs font-medium text-muted-foreground py-2">Assembled At</th>
+                    <th className="text-left text-xs font-medium text-muted-foreground py-2 pr-4">Assembled At</th>
+                    <th className="text-right text-xs font-medium text-muted-foreground py-2">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {packages.map((row) => {
                     const isDuplicate = duplicateBundleIds.has(row.bundle_id);
+                    const statusBadge = packageStatusBadge(row.status);
+                    const isExpanded = expandedBundleId === row.bundle_id;
+                    const showReview = isReadyForReviewStatus(row.status);
                     return (
-                    <tr key={row.bundle_id} className="border-b border-border/50 hover:bg-muted/30 transition-colors">
+                    <Fragment key={row.bundle_id}>
+                    <tr className="border-b border-border/50 hover:bg-muted/30 transition-colors">
                       <td className="py-2.5 pr-4 font-mono text-xs text-foreground">
                         <span className="inline-flex items-center gap-1.5">
                           {row.bundle_id}
@@ -457,20 +537,86 @@ export default function RecordsPage() {
                       <td className="py-2.5 pr-4 text-muted-foreground">{row.payer_name}</td>
                       <td className="py-2.5 pr-4 text-muted-foreground">{row.bundle_type}</td>
                       <td className="py-2.5 pr-4">
-                        <Badge className={`text-[10px] ${
-                          row.status === "Ready for Review"
-                            ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                            : "bg-amber-100 text-amber-700 border-amber-200"
-                        }`}>
-                          {row.status}
+                        <Badge className={`text-[10px] ${statusBadge.className}`} title={row.status}>
+                          {statusBadge.label}
                         </Badge>
                       </td>
-                      <td className="py-2.5 text-muted-foreground text-xs">
+                      <td className="py-2.5 pr-4 text-muted-foreground text-xs">
                         {new Date(row.assembled_at).toLocaleDateString("en-US", {
                           month: "short", day: "2-digit", year: "numeric",
                         })}
                       </td>
+                      <td className="py-2.5 text-right">
+                        {showReview ? (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            onClick={() => openReview(row.bundle_id)}
+                          >
+                            {isExpanded ? "Close" : "Review"}
+                          </Button>
+                        ) : null}
+                      </td>
                     </tr>
+                    <tr key={`${row.bundle_id}-review`} className="border-b border-border/50">
+                      <td colSpan={7} className="p-0 bg-muted/20">
+                        <div
+                          className={`grid transition-[grid-template-rows,opacity] duration-300 ease-in-out ${
+                            isExpanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
+                          }`}
+                        >
+                          <div className="overflow-hidden">
+                            <div className="px-4 py-4 border-t border-border/60">
+                              {reviewLoading && isExpanded ? (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                  Loading checklist…
+                                </div>
+                              ) : reviewBundle && isExpanded ? (
+                                <div className="space-y-4">
+                                  <p className="text-xs font-semibold text-foreground">
+                                    Submission checklist — {row.bundle_id}
+                                  </p>
+                                  <div className="space-y-2">
+                                    {reviewBundle.submission_checklist.map((item, i) => (
+                                      <ChecklistRow key={`${row.bundle_id}-cl-${i}`} item={item} />
+                                    ))}
+                                  </div>
+                                  <div className="flex gap-2 pt-1">
+                                    <Button
+                                      type="button"
+                                      className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white"
+                                      disabled={approveLoadingId === row.bundle_id}
+                                      onClick={() => approveFromReview(row.bundle_id)}
+                                    >
+                                      {approveLoadingId === row.bundle_id ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                          Approving…
+                                        </>
+                                      ) : (
+                                        "Approve"
+                                      )}
+                                    </Button>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      className="flex-1"
+                                      onClick={dismissReview}
+                                    >
+                                      Dismiss
+                                    </Button>
+                                  </div>
+                                </div>
+                              ) : null}
+                            </div>
+                          </div>
+                        </div>
+                      </td>
+                    </tr>
+                    </Fragment>
                     );
                   })}
                 </tbody>

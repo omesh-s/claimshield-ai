@@ -960,6 +960,7 @@ export default function OrderPage() {
         patient_id: form.patient_id ?? loadedCase?.case_id ?? "DEMO-001",
         order_id: runState.runId ?? "unknown",
         payer_id: form.payer_id ?? "bcbs_tx",
+        staff_approved: true,
       });
       setPackagedBundle(bundle);
       toast.success("Records packaged", {
