@@ -206,6 +206,6 @@ ClaimShieldAI/
 
 ## Team
 
-**ClaimShield AI** — AI Hackathon 2026
+**ClaimShield AI** — SpinSci Healthcare AI Hackathon 2026
 
 *All patient data is synthetic. No real PHI is used or stored. This is a demonstration prototype, not a clinical tool.*
