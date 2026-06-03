@@ -2,9 +2,9 @@
 Seed patient data — FHIR R4 structures and supporting chart artifacts.
 
 Three demo patients, each representing a different prior auth scenario:
-  P001 — James Mitchell  — BCBS PPO  — CPT 75571 / I25.10  — Missing cardiology note
-  P002 — Sarah Chen      — UHC HMO   — CPT 75561 / I42.9   — Clean approval
-  P003 — Robert Torres   — Aetna PPO — CPT 75571 / J18.9   — CPT/ICD-10 mismatch
+  10482736 — James Mitchell  — BCBS PPO  — CPT 75571 / I25.10  — Missing cardiology note
+  20193847 — Sarah Chen      — UHC HMO   — CPT 75561 / I42.9   — Clean approval
+  30571629 — Robert Torres   — Aetna PPO — CPT 75571 / J18.9   — CPT/ICD-10 mismatch
 """
 from __future__ import annotations
 
@@ -42,33 +42,33 @@ ICD10_DISPLAYS = {
 # ---------------------------------------------------------------------------
 
 FHIR_PATIENTS: dict[str, FHIRPatient] = {
-    "P001": FHIRPatient(
-        id="P001",
+    "10482736": FHIRPatient(
+        id="10482736",
         name=[{"use": "official", "family": "Mitchell", "given": ["James", "Robert"]}],
         birthDate="1966-03-15",
         gender="male",
         identifier=[
-            {"system": "http://hospital.claimshield.ai/patient", "value": "P001"},
+            {"system": "http://hospital.claimshield.ai/patient", "value": "10482736"},
             {"system": "http://bcbstx.com/member", "value": "BCBS-PPO-7734521"},
         ],
     ),
-    "P002": FHIRPatient(
-        id="P002",
+    "20193847": FHIRPatient(
+        id="20193847",
         name=[{"use": "official", "family": "Chen", "given": ["Sarah", "Lin"]}],
         birthDate="1979-07-22",
         gender="female",
         identifier=[
-            {"system": "http://hospital.claimshield.ai/patient", "value": "P002"},
+            {"system": "http://hospital.claimshield.ai/patient", "value": "20193847"},
             {"system": "http://uhc.com/member", "value": "UHC-HMO-4482019"},
         ],
     ),
-    "P003": FHIRPatient(
-        id="P003",
+    "30571629": FHIRPatient(
+        id="30571629",
         name=[{"use": "official", "family": "Torres", "given": ["Robert", "A."]}],
         birthDate="1962-11-08",
         gender="male",
         identifier=[
-            {"system": "http://hospital.claimshield.ai/patient", "value": "P003"},
+            {"system": "http://hospital.claimshield.ai/patient", "value": "30571629"},
             {"system": "http://aetna.com/member", "value": "AETNA-PPO-9901344"},
         ],
     ),
@@ -79,8 +79,8 @@ FHIR_PATIENTS: dict[str, FHIRPatient] = {
 # ---------------------------------------------------------------------------
 
 PATIENT_DEMOGRAPHICS: dict[str, PatientDemographics] = {
-    "P001": PatientDemographics(
-        patient_id="P001",
+    "10482736": PatientDemographics(
+        patient_id="10482736",
         first_name="James",
         last_name="Mitchell",
         date_of_birth="1966-03-15",
@@ -88,8 +88,8 @@ PATIENT_DEMOGRAPHICS: dict[str, PatientDemographics] = {
         member_id="BCBS-PPO-7734521",
         group_number="GRP-44891",
     ),
-    "P002": PatientDemographics(
-        patient_id="P002",
+    "20193847": PatientDemographics(
+        patient_id="20193847",
         first_name="Sarah",
         last_name="Chen",
         date_of_birth="1979-07-22",
@@ -97,8 +97,8 @@ PATIENT_DEMOGRAPHICS: dict[str, PatientDemographics] = {
         member_id="UHC-HMO-4482019",
         group_number="GRP-77203",
     ),
-    "P003": PatientDemographics(
-        patient_id="P003",
+    "30571629": PatientDemographics(
+        patient_id="30571629",
         first_name="Robert",
         last_name="Torres",
         date_of_birth="1962-11-08",
@@ -113,11 +113,11 @@ PATIENT_DEMOGRAPHICS: dict[str, PatientDemographics] = {
 # ---------------------------------------------------------------------------
 
 FHIR_SERVICE_REQUESTS: dict[str, FHIRServiceRequest] = {
-    "ORD-2024-P001-001": FHIRServiceRequest(
-        id="ORD-2024-P001-001",
+    "ORD-2024-10482736-001": FHIRServiceRequest(
+        id="ORD-2024-10482736-001",
         status="active",
         intent="order",
-        subject=FHIRReference(reference="Patient/P001", display="James Mitchell"),
+        subject=FHIRReference(reference="Patient/10482736", display="James Mitchell"),
         requester=FHIRReference(
             reference="Practitioner/1245319599",
             display="Dr. Patricia Hayes, MD",
@@ -153,11 +153,11 @@ FHIR_SERVICE_REQUESTS: dict[str, FHIRServiceRequest] = {
         authoredOn="2024-11-04",
         insurance=[FHIRReference(reference="Coverage/BCBS-PPO-7734521")],
     ),
-    "ORD-2024-P002-001": FHIRServiceRequest(
-        id="ORD-2024-P002-001",
+    "ORD-2024-20193847-001": FHIRServiceRequest(
+        id="ORD-2024-20193847-001",
         status="active",
         intent="order",
-        subject=FHIRReference(reference="Patient/P002", display="Sarah Chen"),
+        subject=FHIRReference(reference="Patient/20193847", display="Sarah Chen"),
         requester=FHIRReference(
             reference="Practitioner/1234567892",
             display="Dr. Michael Torres, MD, FACC",
@@ -193,11 +193,11 @@ FHIR_SERVICE_REQUESTS: dict[str, FHIRServiceRequest] = {
         authoredOn="2024-11-05",
         insurance=[FHIRReference(reference="Coverage/UHC-HMO-4482019")],
     ),
-    "ORD-2024-P003-001": FHIRServiceRequest(
-        id="ORD-2024-P003-001",
+    "ORD-2024-30571629-001": FHIRServiceRequest(
+        id="ORD-2024-30571629-001",
         status="active",
         intent="order",
-        subject=FHIRReference(reference="Patient/P003", display="Robert Torres"),
+        subject=FHIRReference(reference="Patient/30571629", display="Robert Torres"),
         requester=FHIRReference(
             reference="Practitioner/1578901234",
             display="Dr. Angela Reyes, MD",
@@ -240,7 +240,7 @@ FHIR_SERVICE_REQUESTS: dict[str, FHIRServiceRequest] = {
 
 ORDER_REQUESTS: dict[str, OrderRequest] = {
     "DEMO-001": OrderRequest(
-        patient_id="P001",
+        patient_id="10482736",
         payer_id="bcbs_tx",
         plan_type="commercial",
         cpt_code="75571",
@@ -267,7 +267,7 @@ ORDER_REQUESTS: dict[str, OrderRequest] = {
         demo_case_id="DEMO-001",
     ),
     "DEMO-002": OrderRequest(
-        patient_id="P002",
+        patient_id="20193847",
         payer_id="unitedhealthcare",
         plan_type="commercial_hmo",
         cpt_code="75561",
@@ -299,7 +299,7 @@ ORDER_REQUESTS: dict[str, OrderRequest] = {
         demo_case_id="DEMO-002",
     ),
     "DEMO-003": OrderRequest(
-        patient_id="P003",
+        patient_id="30571629",
         payer_id="aetna",
         plan_type="commercial",
         cpt_code="75571",
@@ -328,9 +328,9 @@ ORDER_REQUESTS: dict[str, OrderRequest] = {
 
 CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
     # --- Patient 1: 2 present, 1 missing (cardiology consult absent) ---
-    "P001": [
+    "10482736": [
         ChartArtifact(
-            artifact_id="ART-P001-001",
+            artifact_id="ART-10482736-001",
             artifact_type="progress_note",
             title="Imaging Indication & Ordering Physician Note",
             date="2024-11-04",
@@ -338,7 +338,7 @@ CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
             content=(
                 "CLINICAL NOTE — IMAGING INDICATION\n"
                 "Date: November 4, 2024\n"
-                "Patient: James Mitchell | DOB: 03/15/1966 | MRN: P001\n\n"
+                "Patient: James Mitchell | DOB: 03/15/1966 | MRN: 10482736\n\n"
                 "Chief Complaint: Exertional chest discomfort × 3 months\n\n"
                 "History of Present Illness: Mr. Mitchell is a 58-year-old male presenting "
                 "with progressive exertional chest discomfort and shortness of breath on "
@@ -368,7 +368,7 @@ CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
             relevance_score=0.97,
         ),
         ChartArtifact(
-            artifact_id="ART-P001-002",
+            artifact_id="ART-10482736-002",
             artifact_type="progress_note",
             title="Referring Provider Note",
             date="2024-11-04",
@@ -406,9 +406,9 @@ CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
     ],
 
     # --- Patient 2: All 3 criteria present — clean approval ---
-    "P002": [
+    "20193847": [
         ChartArtifact(
-            artifact_id="ART-P002-001",
+            artifact_id="ART-20193847-001",
             artifact_type="progress_note",
             title="Cardiology Note — Cardiomyopathy Documentation",
             date="2024-11-05",
@@ -416,7 +416,7 @@ CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
             content=(
                 "CARDIOLOGY CLINIC NOTE\n"
                 "Date: November 5, 2024\n"
-                "Patient: Sarah Chen | DOB: 07/22/1979 | MRN: P002\n\n"
+                "Patient: Sarah Chen | DOB: 07/22/1979 | MRN: 20193847\n\n"
                 "Chief Complaint: Progressive dyspnea on exertion and lower extremity edema\n\n"
                 "Assessment & Plan:\n"
                 "Diagnosis: Dilated Cardiomyopathy (ICD-10: I42.9) — newly diagnosed\n\n"
@@ -440,7 +440,7 @@ CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
             relevance_score=0.98,
         ),
         ChartArtifact(
-            artifact_id="ART-P002-002",
+            artifact_id="ART-20193847-002",
             artifact_type="imaging_report",
             title="Transthoracic Echocardiogram Report",
             date="2024-09-15",
@@ -448,7 +448,7 @@ CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
             content=(
                 "TRANSTHORACIC ECHOCARDIOGRAM REPORT\n"
                 "Date of Study: September 15, 2024  (within 6 months of MRI order)\n"
-                "Patient: Sarah Chen | DOB: 07/22/1979 | MRN: P002\n"
+                "Patient: Sarah Chen | DOB: 07/22/1979 | MRN: 20193847\n"
                 "Ordering Physician: Dr. Michael Torres, MD, FACC\n"
                 "Indication: Evaluation of new-onset heart failure\n\n"
                 "FINDINGS:\n"
@@ -476,7 +476,7 @@ CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
             relevance_score=0.99,
         ),
         ChartArtifact(
-            artifact_id="ART-P002-003",
+            artifact_id="ART-20193847-003",
             artifact_type="progress_note",
             title="Ordering Cardiologist Credentials on File",
             date="2024-11-05",
@@ -504,9 +504,9 @@ CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
     ],
 
     # --- Patient 3: Pneumonia notes present, but CPT is cardiac → mismatch ---
-    "P003": [
+    "30571629": [
         ChartArtifact(
-            artifact_id="ART-P003-001",
+            artifact_id="ART-30571629-001",
             artifact_type="progress_note",
             title="Admitting Note — Community-Acquired Pneumonia",
             date="2024-11-06",
@@ -514,7 +514,7 @@ CHART_ARTIFACTS: dict[str, list[ChartArtifact]] = {
             content=(
                 "ADMITTING NOTE — INPATIENT\n"
                 "Date: November 6, 2024\n"
-                "Patient: Robert Torres | DOB: 11/08/1962 | MRN: P003\n"
+                "Patient: Robert Torres | DOB: 11/08/1962 | MRN: 30571629\n"
                 "Admitting Diagnosis: Community-Acquired Pneumonia (J18.9)\n\n"
                 "Chief Complaint: Fever, productive cough, and shortness of breath × 4 days\n\n"
                 "HPI: Mr. Torres is a 62-year-old male presenting with a 4-day history of "

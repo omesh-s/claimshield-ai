@@ -2,9 +2,9 @@
 Demo case definitions, denial cases, and filing deadline rules.
 
 Three demo cases map directly to the seeded patients and orders:
-  DEMO-001  Missing Cardiology Note   (P001 / BCBS / 75571)
-  DEMO-002  Clean Approval            (P002 / UHC  / 75561)
-  DEMO-003  Code Mismatch Warning     (P003 / Aetna / 75571)
+  DEMO-001  Missing Cardiology Note   (10482736 / BCBS / 75571)
+  DEMO-002  Clean Approval            (20193847 / UHC  / 75561)
+  DEMO-003  Code Mismatch Warning     (30571629 / Aetna / 75571)
 
 One denial case is seeded for DEMO-001 (post-denial appeal flow).
 """
@@ -64,9 +64,9 @@ DEMO_CASES_BY_ID: dict[str, DemoCaseOption] = {c.case_id: c for c in DEMO_CASE_O
 # ---------------------------------------------------------------------------
 
 DENIAL_EVENTS: dict[str, DenialEvent] = {
-    "DENIAL-P001-001": DenialEvent(
-        denial_id="DENIAL-P001-001",
-        original_order_id="ORD-2024-P001-001",
+    "DENIAL-10482736-001": DenialEvent(
+        denial_id="DENIAL-10482736-001",
+        original_order_id="ORD-2024-10482736-001",
         denial_date="2024-11-18",
         denial_reason_code="DENL-MED-NECS-001",
         denial_reason_text=(
@@ -86,7 +86,7 @@ DENIAL_EVENTS: dict[str, DenialEvent] = {
 
 # Convenience: map demo case ID to its associated denial
 DENIAL_BY_DEMO_CASE: dict[str, str] = {
-    "DEMO-001": "DENIAL-P001-001",
+    "DEMO-001": "DENIAL-10482736-001",
 }
 
 # ---------------------------------------------------------------------------
@@ -94,7 +94,7 @@ DENIAL_BY_DEMO_CASE: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 APPEAL_CITATIONS: dict[str, list[dict]] = {
-    "DENIAL-P001-001": [
+    "DENIAL-10482736-001": [
         {
             "title": "ACC/AHA 2021 Guideline for the Evaluation and Diagnosis of Chest Pain",
             "reference": "Gulati M, et al. J Am Coll Cardiol. 2021;78(22):e187-e285.",

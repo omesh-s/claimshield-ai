@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
@@ -40,7 +40,12 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { ordersApi, denialApi, demoCaseApi, demoCasesApi, recordsApi } from "@/lib/api";
-import { getDeadlineRule, calcDeadline } from "@/lib/filing-deadlines";
+import {
+  buildFilingDeadlineStatus,
+  getDemoFilingDeadline,
+  serviceDateDaysAgo,
+  type FilingDeadlineStatus,
+} from "@/lib/filing-deadlines";
 import type {
   OrderRequest,
   WorkflowResult,
@@ -497,30 +502,30 @@ function PatientImpactCard({ impact }: { impact: PatientImpact }) {
 // ---------------------------------------------------------------------------
 // Filing deadline widget — uses FILING_DEADLINES as single source of truth
 // ---------------------------------------------------------------------------
-function FilingDeadlineWidget({ payerId, serviceDateIso }: { payerId: string; serviceDateIso?: string }) {
-  const rule = getDeadlineRule(payerId);
-  // If the order hasn't been submitted yet we use today as the service date
-  const serviceDate = serviceDateIso ?? new Date().toISOString().split("T")[0];
-  const { daysRemaining } = calcDeadline(serviceDate, rule.days);
-  const urgency = daysRemaining > 30 ? "green" : daysRemaining >= 15 ? "amber" : "red";
+function FilingDeadlineWidget({ status }: { status: FilingDeadlineStatus }) {
+  const { rule, daysRemaining, deadlineDays, status: urgency } = status;
+  const colorKey = urgency === "ok" ? "green" : urgency === "warning" ? "amber" : "red";
   const colorMap = {
     green: "bg-emerald-50 border-emerald-200 text-emerald-800",
     amber: "bg-amber-50 border-amber-200 text-amber-800",
     red: "bg-red-50 border-red-200 text-red-800",
   };
   return (
-    <Card className={`border ${colorMap[urgency]}`}>
+    <Card className={`border ${colorMap[colorKey]}`}>
       <CardContent className="pt-3 pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Clock className={`w-4 h-4 ${urgency === "green" ? "text-emerald-600" : urgency === "amber" ? "text-amber-600" : "text-red-600"}`} />
+            <Clock className={`w-4 h-4 ${colorKey === "green" ? "text-emerald-600" : colorKey === "amber" ? "text-amber-600" : "text-red-600"}`} />
             <div>
               <p className="text-xs font-medium">Filing Deadline</p>
-              <p className="text-[10px] text-current/70">{rule.days}-day rule · {rule.state}</p>
+              <p className="text-[10px] text-current/70">{deadlineDays}-day rule · {rule.state}</p>
+              <p className="text-[10px] text-current/60 font-mono">
+                Svc {status.serviceDate} · Due {status.deadlineDate}
+              </p>
             </div>
           </div>
           <div className="text-right">
-            <p className={`text-2xl font-bold ${urgency === "green" ? "text-emerald-700" : urgency === "amber" ? "text-amber-700" : "text-red-700"}`}>
+            <p className={`text-2xl font-bold ${colorKey === "green" ? "text-emerald-700" : colorKey === "amber" ? "text-amber-700" : "text-red-700"}`}>
               {daysRemaining}
             </p>
             <p className="text-[10px] text-current/70">days left</p>
@@ -609,7 +614,17 @@ function ScoreCard({
 // ---------------------------------------------------------------------------
 // Denial card
 // ---------------------------------------------------------------------------
-function DenialCard({ denial }: { denial: DenialEvent }) {
+function DenialCard({
+  denial,
+  patientId,
+  payerLabel,
+  cptCode,
+}: {
+  denial: DenialEvent;
+  patientId?: string;
+  payerLabel?: string;
+  cptCode?: string;
+}) {
   return (
     <Card className="border-red-200 bg-red-50/30">
       <CardHeader className="pb-2 pt-3">
@@ -623,10 +638,28 @@ function DenialCard({ denial }: { denial: DenialEvent }) {
             <p className="text-muted-foreground text-[10px]">Denial ID</p>
             <p className="font-mono font-medium text-red-800 text-[11px]">{denial.denial_id}</p>
           </div>
+          {patientId && (
+            <div>
+              <p className="text-muted-foreground text-[10px]">Patient ID</p>
+              <p className="font-mono font-medium text-foreground text-[11px]">{patientId}</p>
+            </div>
+          )}
           <div>
             <p className="text-muted-foreground text-[10px]">Denial Date</p>
             <p className="font-medium text-foreground">{denial.denial_date}</p>
           </div>
+          {payerLabel && (
+            <div>
+              <p className="text-muted-foreground text-[10px]">Payer</p>
+              <p className="font-medium text-foreground text-[11px]">{payerLabel}</p>
+            </div>
+          )}
+          {cptCode && (
+            <div>
+              <p className="text-muted-foreground text-[10px]">CPT</p>
+              <p className="font-mono font-medium text-foreground text-[11px]">{cptCode}</p>
+            </div>
+          )}
           <div>
             <p className="text-muted-foreground text-[10px]">Category</p>
             <Badge className="text-[10px] bg-red-100 text-red-700 border-red-200 mt-0.5">
@@ -765,6 +798,7 @@ export default function OrderPage() {
   const [denialEvent, setDenialEvent] = useState<DenialEvent | null>(null);
   const [denialLoading, setDenialLoading] = useState(false);
   const [appealLetter, setAppealLetter] = useState<AppealLetter | null>(null);
+  const [appealLetterText, setAppealLetterText] = useState("");
   const [appealLoading, setAppealLoading] = useState(false);
   const [packagedBundle, setPackagedBundle] = useState<PackagedBundle | null>(null);
   const [packageLoading, setPackageLoading] = useState(false);
@@ -772,6 +806,15 @@ export default function OrderPage() {
   const [showDemoModal, setShowDemoModal] = useState(false);
   const [showMismatchModal, setShowMismatchModal] = useState(false);
   const [pendingMismatch, setPendingMismatch] = useState<CodeMismatchWarning | null>(null);
+
+  const filingDeadlineStatus = useMemo((): FilingDeadlineStatus | null => {
+    if (!form.payer_id) return null;
+    if (loadedCase?.case_id) {
+      const demo = getDemoFilingDeadline(loadedCase.case_id);
+      if (demo) return demo;
+    }
+    return buildFilingDeadlineStatus(form.payer_id, serviceDateDaysAgo(0));
+  }, [form.payer_id, loadedCase?.case_id]);
 
   const setField = (key: keyof OrderRequest, value: string) => {
     if (key === "payer_id") {
@@ -825,6 +868,7 @@ export default function OrderPage() {
     setPendingMismatch(null);
     setDenialEvent(null);
     setAppealLetter(null);
+    setAppealLetterText("");
     setPackagedBundle(null);
     setForm({ payer_id: "", plan_type: "", icd10_codes: [] });
     setIcd10Input("");
@@ -850,6 +894,7 @@ export default function OrderPage() {
       try {
         const appeal = await denialApi.generateAppeal(denial);
         setAppealLetter(appeal);
+        setAppealLetterText(appeal.content);
         toast.success("Appeal draft ready", {
           description: `${appeal.word_count} words — review before submission.`,
           ...TOAST_OPTS,
@@ -947,6 +992,7 @@ export default function OrderPage() {
     setDraftContent("");
     setDenialEvent(null);
     setAppealLetter(null);
+    setAppealLetterText("");
     setPackagedBundle(null);
     setApproved(false);
     setActiveTab("justification");
@@ -1231,7 +1277,7 @@ export default function OrderPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <label className={LABEL}>Patient ID *</label>
-                    <input className={INPUT} placeholder="P001" value={form.patient_id ?? ""} onChange={(e) => setField("patient_id", e.target.value)} disabled={isRunning} />
+                    <input className={INPUT} placeholder="10482736" value={form.patient_id ?? ""} onChange={(e) => setField("patient_id", e.target.value)} disabled={isRunning} />
                   </div>
                   <div>
                     <label className={LABEL}>CPT Code *</label>
@@ -1321,10 +1367,19 @@ export default function OrderPage() {
             {result?.gap_analysis && <GapAnalysisCard gap={result.gap_analysis} />}
 
             {result?.patient_impact && <PatientImpactCard impact={result.patient_impact} />}
-            {(isRunning || isComplete) && form.payer_id && <FilingDeadlineWidget payerId={form.payer_id} />}
+            {(isRunning || isComplete) && filingDeadlineStatus && (
+              <FilingDeadlineWidget status={filingDeadlineStatus} />
+            )}
 
             {/* Denial card */}
-            {denialEvent && <DenialCard denial={denialEvent} />}
+            {denialEvent && (
+              <DenialCard
+                denial={denialEvent}
+                patientId={form.patient_id}
+                payerLabel={loadedCase?.payer}
+                cptCode={form.cpt_code}
+              />
+            )}
 
             {/* Trigger mock denial */}
             {approved && !denialEvent && (
@@ -1491,7 +1546,11 @@ export default function OrderPage() {
                           <label className="text-xs font-medium text-muted-foreground">Appeal Letter Draft</label>
                           <Badge className="text-[10px] bg-blue-100 text-blue-700 border-blue-200">{appealLetter.word_count} words</Badge>
                         </div>
-                        <textarea className={`${INPUT} min-h-[400px] font-mono text-xs leading-relaxed resize-y`} defaultValue={appealLetter.content} />
+                        <textarea
+                          className={`${INPUT} min-h-[400px] font-mono text-xs leading-relaxed resize-y`}
+                          value={appealLetterText}
+                          onChange={(e) => setAppealLetterText(e.target.value)}
+                        />
                       </div>
                       <div className="flex gap-2">
                         <Button className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => toast.success("Appeal approved for submission", TOAST_OPTS)}>

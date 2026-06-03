@@ -28,7 +28,7 @@ router = APIRouter(prefix="/records", tags=["records"])
 _PACKAGE_STORE: list[dict] = [
     {
         "bundle_id": "BUNDLE-89FF962F",
-        "patient_id": "P001",
+        "patient_id": "10482736",
         "patient_name": "James Mitchell",
         "payer_id": "bcbs_tx",
         "payer_name": "BCBS Texas PPO",
@@ -72,7 +72,7 @@ class PackagedBundle(BaseModel):
 
 class PackageRecordsRequest(BaseModel):
     run_id: str
-    patient_id: str   # e.g., "DEMO-001" or "P001"
+    patient_id: str   # e.g., "DEMO-001" or "10482736"
     order_id: str
     payer_id: str
 
@@ -83,8 +83,8 @@ class PackageRecordsRequest(BaseModel):
 
 def _resolve_patient_id(raw_id: str) -> str | None:
     """
-    Accept either a demo case ID (DEMO-001) or a raw patient ID (P001).
-    Returns the canonical patient ID (P001-style) or None if not found.
+    Accept either a demo case ID (DEMO-001) or a raw patient ID (8-digit MRN).
+    Returns the canonical patient ID or None if not found.
     """
     # Direct patient ID
     if raw_id in PATIENT_DEMOGRAPHICS:

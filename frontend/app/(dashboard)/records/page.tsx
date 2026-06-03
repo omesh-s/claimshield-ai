@@ -200,12 +200,12 @@ export default function RecordsPage() {
                 <label className={LABEL}>Patient ID <span className="text-destructive">*</span></label>
                 <input
                   className={INPUT}
-                  placeholder="e.g. P001"
+                  placeholder="e.g. 10482736"
                   value={form.patient_id}
                   onChange={(e) => field("patient_id", e.target.value)}
                   disabled={loading}
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">Demo patients: P001, P002, P003</p>
+                <p className="text-[11px] text-muted-foreground mt-1">Demo patients: 10482736, 20193847, 30571629</p>
               </div>
 
               <div>

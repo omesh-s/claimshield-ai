@@ -19,8 +19,10 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { denialApi } from "@/lib/api";
+import { denialApi, demoCaseApi, demoCasesApi } from "@/lib/api";
 import type { AppealLetter, DenialEvent } from "@/types";
+
+const DEMO_DENIAL_CASE_ID = "DEMO-001";
 
 const INPUT =
   "w-full px-3 py-2 text-sm rounded-md border border-input bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring/30 focus:border-ring transition-colors disabled:opacity-50 disabled:cursor-not-allowed";
@@ -67,6 +69,9 @@ export default function DenialPage() {
     denial_date: new Date().toISOString().split("T")[0],
   });
   const [loading, setLoading] = useState(false);
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [seededDenial, setSeededDenial] = useState<DenialEvent | null>(null);
+  const [demoLabel, setDemoLabel] = useState<string | null>(null);
   const [appeal, setAppeal] = useState<AppealLetter | null>(null);
   const [letterText, setLetterText] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -75,19 +80,52 @@ export default function DenialPage() {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  async function loadDemoDenial() {
+    setError(null);
+    setAppeal(null);
+    setLetterText("");
+    setDemoLoading(true);
+    try {
+      const [denial, detail] = await Promise.all([
+        demoCaseApi.getDenial(DEMO_DENIAL_CASE_ID),
+        demoCasesApi.get(DEMO_DENIAL_CASE_ID),
+      ]);
+      setSeededDenial(denial);
+      setDemoLabel(detail.label);
+      setForm({
+        patient_id: detail.order.patient_id,
+        payer_id: detail.order.payer_id,
+        cpt_code: detail.order.cpt_code,
+        icd10_code: detail.order.icd10_codes[0] ?? "",
+        denial_reason: denial.denial_reason_text,
+        denial_date: denial.denial_date,
+      });
+      toast.success("Demo denial loaded", {
+        description: `${denial.denial_id} — review the draft, then generate appeal.`,
+        duration: 4000,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to load demo denial.";
+      setError(msg);
+      toast.error("Demo load failed", { duration: 4000 });
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setAppeal(null);
 
-    if (!form.patient_id || !form.denial_reason) {
+    if (!seededDenial && (!form.patient_id || !form.denial_reason)) {
       setError("Patient ID and Denial Reason are required.");
       return;
     }
 
     setLoading(true);
     try {
-      const denial: DenialEvent = {
+      const denial: DenialEvent = seededDenial ?? {
         denial_id: `DENIAL-${form.patient_id.toUpperCase()}-${Date.now().toString(36).toUpperCase()}`,
         original_order_id: `ORDER-${form.patient_id.toUpperCase()}`,
         denial_date: form.denial_date,
@@ -164,17 +202,64 @@ export default function DenialPage() {
               Denial Details
             </CardTitle>
             <p className="text-sm text-muted-foreground">
-              Enter the denial information to generate an AI-drafted appeal letter.
+              Load the seeded DEMO-001 denial or enter details manually. Appeals are drafts for staff review only.
             </p>
           </CardHeader>
-          <CardContent className="pb-6">
+          <CardContent className="pb-6 space-y-4">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full border-primary/30 text-primary hover:bg-primary/5"
+              onClick={loadDemoDenial}
+              disabled={loading || demoLoading}
+            >
+              {demoLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Loading DEMO-001…
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Load Seeded Denial (DEMO-001)
+                </>
+              )}
+            </Button>
+
+            {seededDenial && (
+              <div className="rounded-md border border-red-200 bg-red-50/50 p-3 text-xs space-y-2">
+                <p className="font-semibold text-red-800">
+                  Seeded denial — {demoLabel ?? DEMO_DENIAL_CASE_ID}
+                </p>
+                <div className="grid grid-cols-2 gap-2 text-[11px]">
+                  <div>
+                    <span className="text-muted-foreground">Denial ID</span>
+                    <p className="font-mono text-red-900">{seededDenial.denial_id}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Patient ID</span>
+                    <p className="font-mono">{form.patient_id}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Payer ref</span>
+                    <p className="font-mono">{seededDenial.payer_reference_number}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">CPT / ICD-10</span>
+                    <p className="font-mono">{form.cpt_code} / {form.icd10_code}</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-red-800/90 line-clamp-3">{seededDenial.denial_reason_text}</p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={LABEL}>Patient ID <span className="text-destructive">*</span></label>
                   <input
                     className={INPUT}
-                    placeholder="e.g. P001"
+                    placeholder="e.g. 10482736"
                     value={form.patient_id}
                     onChange={(e) => field("patient_id", e.target.value)}
                     disabled={loading}
@@ -261,10 +346,13 @@ export default function DenialPage() {
                 ) : (
                   <>
                     <Brain className="w-4 h-4 mr-2" />
-                    Generate Appeal Letter
+                    {seededDenial ? "Generate Appeal Draft" : "Generate Appeal Letter"}
                   </>
                 )}
               </Button>
+              <p className="text-[10px] text-muted-foreground text-center">
+                Draft only — not submitted to payer until staff approves.
+              </p>
             </form>
           </CardContent>
         </Card>

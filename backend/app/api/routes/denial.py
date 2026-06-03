@@ -36,27 +36,47 @@ _PAYER_DISPLAY: dict[str, str] = {
 }
 
 
-def _get_patient_context(denial: DenialEvent) -> tuple[str, str, str]:
-    """Return (patient_name, dob, payer_display) for the denial's order."""
+def _get_patient_context(
+    denial: DenialEvent,
+) -> tuple[str, str, str, str | None, list[str], str | None]:
+    """Return (name, dob, payer_display, cpt_code, icd10_codes, patient_id) for the denial's order."""
     patient_id = _ORDER_ID_TO_PATIENT.get(denial.original_order_id)
     if patient_id:
         demo = PATIENT_DEMOGRAPHICS.get(patient_id)
+        order = next((o for o in ORDER_REQUESTS.values() if o.patient_id == patient_id), None)
+        payer_display = (
+            _PAYER_DISPLAY.get(order.payer_id, order.payer_id) if order else "Unknown Payer"
+        )
         if demo:
-            name = f"{demo.first_name} {demo.last_name}"
-            dob = demo.date_of_birth
-            return name, dob, ""
+            return (
+                f"{demo.first_name} {demo.last_name}",
+                demo.date_of_birth,
+                payer_display,
+                order.cpt_code if order else None,
+                list(order.icd10_codes) if order else [],
+                patient_id,
+            )
 
-    # Fallback — scan ORDER_REQUESTS for a matching patient
-    for order in ORDER_REQUESTS.values():
-        demo = PATIENT_DEMOGRAPHICS.get(order.patient_id)
-        if demo:
-            name = f"{demo.first_name} {demo.last_name}"
-            return name, demo.date_of_birth, _PAYER_DISPLAY.get(order.payer_id, order.payer_id)
+    return (
+        "Patient (unknown)",
+        "Unknown",
+        denial.payer_reference_number or "Payer",
+        None,
+        [],
+        None,
+    )
 
-    return "Patient (unknown)", "Unknown", "Payer"
 
-
-def _build_appeal_prompt(denial: DenialEvent, citations: list[dict], patient_name: str, dob: str, payer_display: str) -> str:
+def _build_appeal_prompt(
+    denial: DenialEvent,
+    citations: list[dict],
+    patient_name: str,
+    dob: str,
+    payer_display: str,
+    cpt_code: str | None,
+    icd10_codes: list[str],
+    patient_id: str | None,
+) -> str:
     citations_text = "\n".join(
         f"  [{i+1}] {c['title']}\n"
         f"       Citation: {c['reference']}\n"
@@ -75,9 +95,12 @@ DENIAL INFORMATION:
 - Appeal Deadline: {denial.appeal_deadline or "Within 60 days of denial"}
 
 PATIENT:
+- Patient ID (MRN): {patient_id or "N/A"}
 - Name: {patient_name}
 - Date of Birth: {dob}
 - Payer: {payer_display or "Blue Cross Blue Shield of Texas"}
+- CPT Code: {cpt_code or "See denial text"}
+- ICD-10 Diagnosis: {", ".join(icd10_codes) if icd10_codes else "See clinical record"}
 - Original Order ID: {denial.original_order_id}
 
 SUPPORTING EVIDENCE (cite all of the following in the letter):
@@ -146,10 +169,19 @@ async def generate_appeal(denial: DenialEvent) -> AppealLetter:
         logger.warning("appeal.no_citations", denial_id=denial.denial_id)
 
     # Resolve patient context from the denial's original order ID
-    patient_name, dob, payer_display = _get_patient_context(denial)
+    patient_name, dob, payer_display, cpt_code, icd10_codes, patient_id = _get_patient_context(denial)
 
     # Build prompt and generate
-    prompt = _build_appeal_prompt(denial, citations, patient_name, dob, payer_display)
+    prompt = _build_appeal_prompt(
+        denial,
+        citations,
+        patient_name,
+        dob,
+        payer_display,
+        cpt_code,
+        icd10_codes,
+        patient_id,
+    )
 
     try:
         content = await generate_text(prompt)
