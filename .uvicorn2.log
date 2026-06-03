@@ -1,0 +1,21 @@
+{"app": "ClaimShield AI", "version": "0.1.0", "env": "development", "event": "startup", "level": "info", "timestamp": "2026-06-02T22:36:41.964023Z"}
+{"patients": 3, "event": "startup.mocks.ehr_registered", "level": "info", "timestamp": "2026-06-02T22:36:41.968907Z"}
+{"payer_cpt_combos": 3, "event": "startup.mocks.clearinghouse_registered", "level": "info", "timestamp": "2026-06-02T22:36:41.970603Z"}
+{"message": "All demo data registered and ready", "event": "startup.mocks.complete", "level": "info", "timestamp": "2026-06-02T22:36:41.970603Z"}
+INFO:     127.0.0.1:55201 - "GET /api/v1/health HTTP/1.1" 200 OK
+{"run_id": "c005ccf2-d4b0-428c-b3ef-069e28e5b12f", "patient_id": "P001", "event": "process_order_sync.start", "level": "info", "timestamp": "2026-06-02T22:37:09.454366Z"}
+{"payer_id": "bcbs_tx", "cpt_code": "75571", "auth_required": true, "event": "rules.clearinghouse_hit", "level": "info", "timestamp": "2026-06-02T22:37:09.455925Z"}
+{"payer_id": "bcbs_tx", "cpt_code": "75571", "chunks": 3, "event": "retrieval.cache_hit", "level": "info", "timestamp": "2026-06-02T22:37:09.463734Z"}
+{"attempt": 1, "error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelServ", "wait_s": 5, "event": "llm.call_retry", "level": "warning", "timestamp": "2026-06-02T22:37:09.656241Z"}
+{"error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelServ", "event": "workflow.analyze.llm_retry", "level": "warning", "timestamp": "2026-06-02T22:37:14.804616Z"}
+{"attempt": 1, "error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelServ", "wait_s": 5, "event": "llm.call_retry", "level": "warning", "timestamp": "2026-06-02T22:37:16.944877Z"}
+{"error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.", "event": "workflow.analyze.llm_failed", "level": "error", "timestamp": "2026-06-02T22:37:22.069939Z"}
+{"attempt": 1, "error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelServ", "wait_s": 5, "event": "llm.call_retry", "level": "warning", "timestamp": "2026-06-02T22:37:22.178011Z"}
+{"error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelServ", "event": "workflow.draft.llm_retry", "level": "warning", "timestamp": "2026-06-02T22:37:27.281787Z"}
+{"attempt": 1, "error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelServ", "wait_s": 5, "event": "llm.call_retry", "level": "warning", "timestamp": "2026-06-02T22:37:29.376432Z"}
+{"error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.", "event": "workflow.draft.llm_failed", "level": "error", "timestamp": "2026-06-02T22:37:34.460219Z"}
+{"attempt": 1, "error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelServ", "wait_s": 5, "event": "llm.call_retry", "level": "warning", "timestamp": "2026-06-02T22:37:34.538687Z"}
+{"error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelServ", "event": "workflow.score.llm_retry", "level": "warning", "timestamp": "2026-06-02T22:37:39.634421Z"}
+{"attempt": 1, "error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelServ", "wait_s": 5, "event": "llm.call_retry", "level": "warning", "timestamp": "2026-06-02T22:37:41.717775Z"}
+{"error": "404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.", "event": "workflow.score.llm_failed", "level": "error", "timestamp": "2026-06-02T22:37:46.789434Z"}
+INFO:     127.0.0.1:55239 - "POST /api/v1/process-order/sync HTTP/1.1" 200 OK

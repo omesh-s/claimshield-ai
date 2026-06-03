@@ -1,0 +1,292 @@
+﻿{
+    "run_id":  "10c2eeed-4711-43b0-befc-2a7f63dbe0b7",
+    "status":  "complete",
+    "elapsed_ms":  71277,
+    "result":  {
+                   "run_id":  "10c2eeed-4711-43b0-befc-2a7f63dbe0b7",
+                   "completed":  true,
+                   "step_statuses":  {
+                                         "detect":  "complete",
+                                         "retrieve":  "complete",
+                                         "analyze":  "complete",
+                                         "draft":  "complete",
+                                         "score":  "complete"
+                                     },
+                   "errors":  {
+
+                              },
+                   "pa_requirement":  {
+                                          "required":  true,
+                                          "reason":  "Prior authorization required for CT angiography of the heart (CPT 75571) under BCBS TX commercial PPO plans per Medical Policy MP-1.019.",
+                                          "source":  "clearinghouse_api",
+                                          "confidence":  0.97,
+                                          "recommendation":  "Proceed with prior authorization submission.",
+                                          "is_fallback":  false,
+                                          "raw_response":  {
+                                                               "transactionId":  "CHS-270-BCBS-75571-001",
+                                                               "memberId":  "BCBS-PPO-7734521",
+                                                               "payerId":  "bcbs_tx",
+                                                               "planType":  "commercial",
+                                                               "procedureCode":  "75571",
+                                                               "authRequired":  true,
+                                                               "authRequiredReason":  "Prior authorization required for CT angiography of the heart (CPT 75571) under BCBS TX commercial PPO plans per Medical Policy MP-1.019.",
+                                                               "criteria":  [
+                                                                                {
+                                                                                    "criterionId":  "BCBS-75571-C1",
+                                                                                    "description":  "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                                                                    "required":  true
+                                                                                },
+                                                                                {
+                                                                                    "criterionId":  "BCBS-75571-C2",
+                                                                                    "description":  "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                                                                    "required":  true
+                                                                                },
+                                                                                {
+                                                                                    "criterionId":  "BCBS-75571-C3",
+                                                                                    "description":  "Referring provider note on file documenting the basis for the referral and relevant clinical history.",
+                                                                                    "required":  true
+                                                                                }
+                                                                            ],
+                                                               "confidence":  0.97,
+                                                               "responseDate":  "20260602",
+                                                               "source":  "clearinghouse_api",
+                                                               "rawSegments":  {
+                                                                                   "ISA":  "ISA*00*          *00*          *ZZ*CLAIMSHIELD     *ZZ*BCBSTX         *240101*0900*^*00501*000000001*0*P*:",
+                                                                                   "GS":  "GS*HS*CLAIMSHIELD*BCBSTX*20240101*0900*1*X*005010X279A1",
+                                                                                   "ST":  "ST*271*0001*005010X279A1",
+                                                                                   "BHT":  "BHT*0022*11*CHS-270-BCBS-75571-001*20240101*0900",
+                                                                                   "EB":  "EB*1*IND*30*HM**27*1**27",
+                                                                                   "UM":  "UM*SC*I*****Y"
+                                                                               }
+                                                           },
+                                          "checked_at":  "2026-06-02T22:39:36.415669"
+                                      },
+                   "pa_criteria":  [
+                                       "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                       "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                       "Referring provider note on file documenting the basis for the referral and relevant clinical history."
+                                   ],
+                   "pa_not_required":  false,
+                   "policy_retrieval":  {
+                                            "payer_id":  "bcbs_tx",
+                                            "plan_type":  "commercial",
+                                            "cpt_code":  "75571",
+                                            "chunks":  [
+                                                           {
+                                                               "chunk_id":  "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                               "payer_id":  "bcbs_tx",
+                                                               "plan_type":  "commercial",
+                                                               "source_doc":  "BCBS_TX_Medical_Policy_MP-1.019_Cardiac_Imaging_v2024.pdf",
+                                                               "page_num":  3,
+                                                               "similarity_score":  0.8004494785190872,
+                                                               "cpt_codes":  [
+                                                                                 "75571"
+                                                                             ],
+                                                               "icd10_codes":  [
+                                                                                   "I25.10",
+                                                                                   "I25.110",
+                                                                                   "I25.700",
+                                                                                   "I20.9",
+                                                                                   "R07.9"
+                                                                               ],
+                                                               "source":  "vector_search"
+                                                           },
+                                                           {
+                                                               "chunk_id":  "7186927f-2b01-4e28-8f28-1b9d24bd9031",
+                                                               "payer_id":  "bcbs_tx",
+                                                               "plan_type":  "commercial",
+                                                               "source_doc":  "BCBS_TX_Medical_Policy_MP-1.019_Cardiac_Imaging_v2024.pdf",
+                                                               "page_num":  5,
+                                                               "similarity_score":  0.7811978384976772,
+                                                               "cpt_codes":  [
+                                                                                 "75571"
+                                                                             ],
+                                                               "icd10_codes":  [
+                                                                                   "I25.10"
+                                                                               ],
+                                                               "source":  "vector_search"
+                                                           },
+                                                           {
+                                                               "chunk_id":  "2bcd450a-38fb-4d1b-857d-4a8889cbe81b",
+                                                               "payer_id":  "bcbs_tx",
+                                                               "plan_type":  "commercial",
+                                                               "source_doc":  "BCBS_TX_Medical_Policy_MP-1.019_Cardiac_Imaging_v2024.pdf",
+                                                               "page_num":  4,
+                                                               "similarity_score":  0.7740113947350814,
+                                                               "cpt_codes":  [
+                                                                                 "75571"
+                                                                             ],
+                                                               "icd10_codes":  [
+                                                                                   "I25.10",
+                                                                                   "I25.110"
+                                                                               ],
+                                                               "source":  "vector_search"
+                                                           }
+                                                       ],
+                                            "total_retrieved":  3,
+                                            "retrieval_strategy":  "vector_search",
+                                            "cache_hit":  true
+                                        },
+                   "gap_analysis":  {
+                                        "criteria_evaluated":  [
+                                                                   {
+                                                                       "criterion_id":  "CRIT-01",
+                                                                       "criterion_text":  "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                                                       "status":  "missing",
+                                                                       "evidence_from_notes":  null,
+                                                                       "supporting_chunk_ids":  [
+                                                                                                    "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                    "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                ],
+                                                                       "recommendation":  "Obtain and attach missing documentation before submission."
+                                                                   },
+                                                                   {
+                                                                       "criterion_id":  "CRIT-02",
+                                                                       "criterion_text":  "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                                                       "status":  "met",
+                                                                       "evidence_from_notes":  "CT angiography of the coronary arteries (CPT 75571) is ordered to evaluate for significant coronary artery stenosis in the context of suspected atherosclerotic coronary artery disease (ICD-10: I25.10). Imaging is clinically indicated given the patient\u0027s exertional symptom burden, significant cardiovascular risk profile, and ECG changes. Results will guide further management including potential stress testing or invasive coronary evaluation.",
+                                                                       "supporting_chunk_ids":  [
+                                                                                                    "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                    "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                ],
+                                                                       "recommendation":  "Submit with this documentation as supporting evidence."
+                                                                   },
+                                                                   {
+                                                                       "criterion_id":  "CRIT-03",
+                                                                       "criterion_text":  "Referring provider note on file documenting the basis for the referral and relevant clinical history.",
+                                                                       "status":  "met",
+                                                                       "evidence_from_notes":  "I am referring Mr. James Mitchell, a 58-year-old male patient, for advanced cardiovascular imaging evaluation. Mr. Mitchell has presented to my clinic with a 3-month history of exertional chest symptoms that are consistent with possible myocardial ischemia.",
+                                                                       "supporting_chunk_ids":  [
+                                                                                                    "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                    "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                ],
+                                                                       "recommendation":  "Submit with this documentation as supporting evidence."
+                                                                   }
+                                                               ],
+                                        "met_count":  2,
+                                        "missing_count":  1,
+                                        "ambiguous_count":  0,
+                                        "conflict_count":  0,
+                                        "code_audit_warnings":  [
+
+                                                                ],
+                                        "code_mismatch_warning":  {
+                                                                      "detected":  false,
+                                                                      "cpt_code":  "75571",
+                                                                      "icd10_codes":  [
+                                                                                          "I25.10"
+                                                                                      ],
+                                                                      "warning_message":  "The procedure code does not align with the documented diagnosis codes. Please confirm before proceeding."
+                                                                  },
+                                        "overall_risk":  "medium",
+                                        "analyst_summary":  "The prior authorization request for coronary CTA (CPT 75571) cannot be approved because it is administratively incomplete under the BCBS TX medical policy. Although the ordering internal medicine physician, Dr. Patricia Hayes, provided a comprehensive referral note and a clear imaging indication detailing how the results will guide patient management, the chart lacks the mandatory cardiology consultation note. The policy strictly requires a formal evaluation and signed consultation note from a board-eligible or board-certified cardiologist within the past 12 months. Consequently, the request must be denied."
+                                    },
+                   "code_mismatch_warning":  {
+                                                 "detected":  false,
+                                                 "cpt_code":  "75571",
+                                                 "icd10_codes":  [
+                                                                     "I25.10"
+                                                                 ],
+                                                 "warning_message":  "The procedure code does not align with the documented diagnosis codes. Please confirm before proceeding."
+                                             },
+                   "draft":  {
+                                 "justification_letter":  {
+                                                              "draft_id":  "DRAFT-FFA20618",
+                                                              "version":  1,
+                                                              "content":  "Date: June 02, 2026\n\nTo: Blue Cross Blue Shield of Texas, Prior Authorization Department\n\nPatient Name: James Mitchell\nPatient Date of Birth: March 15, 1966\nMember ID: BCBS-PPO-7734521\nHealth Plan: Commercial PPO\nRequested Procedure: CPT 75571 - CT Angiography, Heart (Coronary CTA)\nDiagnosis Code: I25.10 - Atherosclerotic heart disease of native coronary artery without angina pectoris\n\nI am writing on behalf of Mr. James Mitchell to request prior authorization for a coronary computed tomography angiography, represented by CPT code 75571. This request is submitted in accordance with the Blue Cross Blue Shield of Texas Medical Policy MP-1.019, which outlines the clinical appropriateness criteria for Coronary CTA. The patient is a 58-year-old male with suspected atherosclerotic coronary artery disease, and this advanced imaging is vital to establish an accurate diagnosis and direct his ongoing cardiovascular care.\n\nRegarding the policy requirement for a clearly stated imaging indication, the ordering physician has explicitly documented the clinical question and how the results will directly impact patient management. According to the patient\u0027s medical record, CT angiography of the coronary arteries is ordered to evaluate for significant coronary artery stenosis in the context of suspected atherosclerotic coronary artery disease. This imaging is clinically indicated given the patient\u0027s exertional symptom burden, significant cardiovascular risk profile, and electrocardiogram changes. The results of this study will guide further clinical management, including determining the necessity of subsequent stress testing or invasive coronary evaluation.\n\nIn alignment with the policy requirement for a referring provider note documenting the basis for referral and clinical history, the patient\u0027s chart contains a detailed clinical note. The referring provider documents that Mr. James Mitchell is a 58-year-old male patient referred for advanced cardiovascular imaging evaluation. The note details that Mr. Mitchell presented to the clinic with a three-month history of exertional chest symptoms that are highly consistent with possible myocardial ischemia, establishing a clear clinical history and justification for this diagnostic referral.\n\nWe acknowledge that Blue Cross Blue Shield of Texas Medical Policy MP-1.019 requires a formal cardiology evaluation within the past twelve months documenting symptoms consistent with coronary artery disease, including a consultation note signed by a board-eligible or board-certified cardiologist. At this time, this specific cardiology consultation note is pending. We are actively coordinating this evaluation, and this supplemental documentation will be provided immediately upon request or as soon as it becomes available to complete the clinical review.\n\nThank you for your time and careful consideration of this prior authorization request. If you require any additional clinical documentation, office notes, or have further questions regarding Mr. Mitchell\u0027s clinical presentation, please do not hesitate to contact our office directly at 555-123-4567.\n\nSincerely,\n\nDr. Robert Vance, MD\nNPI: 1987654321\nSpecialty: Cardiovascular Medicine\nVance Heart and Vascular Institute",
+                                                              "cited_policy_chunk_ids":  [
+                                                                                             "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                             "7186927f-2b01-4e28-8f28-1b9d24bd9031",
+                                                                                             "2bcd450a-38fb-4d1b-857d-4a8889cbe81b"
+                                                                                         ],
+                                                              "word_count":  451,
+                                                              "generated_at":  "2026-06-02T22:40:06.239432"
+                                                          },
+                                 "gap_report":  {
+                                                    "report_id":  "RPT-6EEF7DAC",
+                                                    "checklist_items":  [
+                                                                            {
+                                                                                "criterion_id":  "CRIT-01",
+                                                                                "criterion_text":  "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                                                                "status":  "missing",
+                                                                                "evidence_from_notes":  null,
+                                                                                "supporting_chunk_ids":  [
+                                                                                                             "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                             "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                         ],
+                                                                                "recommendation":  "Obtain and attach missing documentation before submission."
+                                                                            },
+                                                                            {
+                                                                                "criterion_id":  "CRIT-02",
+                                                                                "criterion_text":  "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                                                                "status":  "met",
+                                                                                "evidence_from_notes":  "CT angiography of the coronary arteries (CPT 75571) is ordered to evaluate for significant coronary artery stenosis in the context of suspected atherosclerotic coronary artery disease (ICD-10: I25.10). Imaging is clinically indicated given the patient\u0027s exertional symptom burden, significant cardiovascular risk profile, and ECG changes. Results will guide further management including potential stress testing or invasive coronary evaluation.",
+                                                                                "supporting_chunk_ids":  [
+                                                                                                             "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                             "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                         ],
+                                                                                "recommendation":  "Submit with this documentation as supporting evidence."
+                                                                            },
+                                                                            {
+                                                                                "criterion_id":  "CRIT-03",
+                                                                                "criterion_text":  "Referring provider note on file documenting the basis for the referral and relevant clinical history.",
+                                                                                "status":  "met",
+                                                                                "evidence_from_notes":  "I am referring Mr. James Mitchell, a 58-year-old male patient, for advanced cardiovascular imaging evaluation. Mr. Mitchell has presented to my clinic with a 3-month history of exertional chest symptoms that are consistent with possible myocardial ischemia.",
+                                                                                "supporting_chunk_ids":  [
+                                                                                                             "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                             "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                         ],
+                                                                                "recommendation":  "Submit with this documentation as supporting evidence."
+                                                                            }
+                                                                        ],
+                                                    "action_items":  [
+                                                                         "Obtain missing documentation: Cardiology evaluation within the past 12 months documenting symptoms consistent "
+                                                                     ],
+                                                    "generated_at":  "2026-06-02T22:40:06.239432"
+                                                }
+                             },
+                   "patient_impact":  {
+                                          "estimated_wait_time_saved":  "up to 6 days",
+                                          "auth_failure_risk":  "Reduced: 2 of 3 criteria pre-checked before submission",
+                                          "patient_note":  "Faster authorization means faster access to care for this patient."
+                                      },
+                   "scoring":  {
+                                   "scores":  [
+                                                  {
+                                                      "criterion_id":  "SC-01",
+                                                      "criterion_text":  "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                                      "score":  "fail",
+                                                      "rationale":  "The letter explicitly states that the required cardiology consultation note is currently pending and not yet available."
+                                                  },
+                                                  {
+                                                      "criterion_id":  "SC-02",
+                                                      "criterion_text":  "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                                      "score":  "pass",
+                                                      "rationale":  "The letter clearly outlines the clinical question of evaluating for significant coronary artery stenosis and explains how the results will guide subsequent management decisions."
+                                                  },
+                                                  {
+                                                      "criterion_id":  "SC-03",
+                                                      "criterion_text":  "Referring provider note on file documenting the basis for the referral and relevant clinical history.",
+                                                      "score":  "pass",
+                                                      "rationale":  "The letter documents a detailed clinical history of a three-month history of exertional chest symptoms as the basis for the referral."
+                                                  }
+                                              ],
+                                   "pass_count":  2,
+                                   "flag_count":  0,
+                                   "fail_count":  1,
+                                   "readiness_score":  66.7,
+                                   "submission_readiness":  "not_ready",
+                                   "reviewer_notes":  "The letter cannot be submitted in its current state because the critical cardiology consultation note is missing, which is the most common reason for administrative denial by BCBS TX. The letter must be revised to include this completed note before submission.",
+                                   "scored_at":  "2026-06-02T22:40:47.691974"
+                               },
+                   "patient":  {
+                                   "patient_id":  "P001",
+                                   "first_name":  "James",
+                                   "last_name":  "Mitchell",
+                                   "date_of_birth":  "1966-03-15",
+                                   "gender":  "male",
+                                   "member_id":  "BCBS-PPO-7734521",
+                                   "group_number":  "GRP-44891"
+                               }
+               }
+}

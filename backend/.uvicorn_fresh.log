@@ -1,0 +1,63 @@
+﻿.\.venv\Scripts\uvicorn : 
+C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\google\api_core\_python_version_support.py:273: 
+FutureWarning: You are using a Python version (3.10.11) which Google will stop supporting in new releases of 
+google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least 
+Python 3.11, to continue receiving updates for google.api_core past that date.
+    + CategoryInfo          : NotSpecified: (C:\Users\omesh\...past that date.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+  warnings.warn(message, FutureWarning)
+Traceback (most recent call last):
+  File "C:\Users\omesh\AppData\Local\Programs\Python\Python310\lib\runpy.py", line 196, in _run_module_as_main
+    return _run_code(code, main_globals, None,
+  File "C:\Users\omesh\AppData\Local\Programs\Python\Python310\lib\runpy.py", line 86, in _run_code
+    exec(code, run_globals)
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\Scripts\uvicorn.exe\__main__.py", line 7, in <module>
+    sys.exit(main())
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\click\core.py", line 1524, in __call__
+    return self.main(*args, **kwargs)
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\click\core.py", line 1445, in main
+    rv = self.invoke(ctx)
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\click\core.py", line 1308, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\click\core.py", line 877, in invoke
+    return callback(*args, **kwargs)
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\uvicorn\main.py", line 410, in main
+    run(
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\uvicorn\main.py", line 577, in run
+    server.run()
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\uvicorn\server.py", line 65, in run
+    return asyncio.run(self.serve(sockets=sockets))
+  File "C:\Users\omesh\AppData\Local\Programs\Python\Python310\lib\asyncio\runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "C:\Users\omesh\AppData\Local\Programs\Python\Python310\lib\asyncio\base_events.py", line 649, in 
+run_until_complete
+    return future.result()
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\uvicorn\server.py", line 69, in serve
+    await self._serve(sockets)
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\uvicorn\server.py", line 76, in _serve
+    config.load()
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\uvicorn\config.py", line 434, in load
+    self.loaded_app = import_from_string(self.app)
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\uvicorn\importer.py", line 19, in 
+import_from_string
+    module = importlib.import_module(module_str)
+  File "C:\Users\omesh\AppData\Local\Programs\Python\Python310\lib\importlib\__init__.py", line 126, in import_module
+    return _bootstrap._gcd_import(name[level:], package, level)
+  File "<frozen importlib._bootstrap>", line 1050, in _gcd_import
+  File "<frozen importlib._bootstrap>", line 1027, in _find_and_load
+  File "<frozen importlib._bootstrap>", line 1006, in _find_and_load_unlocked
+  File "<frozen importlib._bootstrap>", line 688, in _load_unlocked
+  File "<frozen importlib._bootstrap_external>", line 883, in exec_module
+  File "<frozen importlib._bootstrap>", line 241, in _call_with_frames_removed
+  File "C:\Users\omesh\ClaimShieldAI\backend\app\main.py", line 9, in <module>
+    from app.api.routes import health, demo_cases, process_order, denial, package_records, pitch, retrieval_test
+  File "C:\Users\omesh\ClaimShieldAI\backend\app\api\routes\process_order.py", line 33, in <module>
+    from app.core.workflow import run_workflow
+  File "C:\Users\omesh\ClaimShieldAI\backend\app\core\workflow.py", line 820, in <module>
+    workflow_app = build_workflow()
+  File "C:\Users\omesh\ClaimShieldAI\backend\app\core\workflow.py", line 807, in build_workflow
+    graph.add_node(WorkflowStep.DRAFT,    draft_node)
+  File "C:\Users\omesh\ClaimShieldAI\backend\.venv\lib\site-packages\langgraph\graph\state.py", line 301, in add_node
+    raise ValueError(f"'{node}' is already being used as a state key")
+ValueError: 'draft' is already being used as a state key

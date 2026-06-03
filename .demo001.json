@@ -1,0 +1,292 @@
+﻿{
+    "run_id":  "c005ccf2-d4b0-428c-b3ef-069e28e5b12f",
+    "status":  "complete",
+    "elapsed_ms":  37338,
+    "result":  {
+                   "run_id":  "c005ccf2-d4b0-428c-b3ef-069e28e5b12f",
+                   "completed":  true,
+                   "step_statuses":  {
+                                         "detect":  "complete",
+                                         "retrieve":  "complete",
+                                         "analyze":  "complete",
+                                         "draft":  "complete",
+                                         "score":  "complete"
+                                     },
+                   "errors":  {
+
+                              },
+                   "pa_requirement":  {
+                                          "required":  true,
+                                          "reason":  "Prior authorization required for CT angiography of the heart (CPT 75571) under BCBS TX commercial PPO plans per Medical Policy MP-1.019.",
+                                          "source":  "clearinghouse_api",
+                                          "confidence":  0.97,
+                                          "recommendation":  "Proceed with prior authorization submission.",
+                                          "is_fallback":  false,
+                                          "raw_response":  {
+                                                               "transactionId":  "CHS-270-BCBS-75571-001",
+                                                               "memberId":  "BCBS-PPO-7734521",
+                                                               "payerId":  "bcbs_tx",
+                                                               "planType":  "commercial",
+                                                               "procedureCode":  "75571",
+                                                               "authRequired":  true,
+                                                               "authRequiredReason":  "Prior authorization required for CT angiography of the heart (CPT 75571) under BCBS TX commercial PPO plans per Medical Policy MP-1.019.",
+                                                               "criteria":  [
+                                                                                {
+                                                                                    "criterionId":  "BCBS-75571-C1",
+                                                                                    "description":  "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                                                                    "required":  true
+                                                                                },
+                                                                                {
+                                                                                    "criterionId":  "BCBS-75571-C2",
+                                                                                    "description":  "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                                                                    "required":  true
+                                                                                },
+                                                                                {
+                                                                                    "criterionId":  "BCBS-75571-C3",
+                                                                                    "description":  "Referring provider note on file documenting the basis for the referral and relevant clinical history.",
+                                                                                    "required":  true
+                                                                                }
+                                                                            ],
+                                                               "confidence":  0.97,
+                                                               "responseDate":  "20260602",
+                                                               "source":  "clearinghouse_api",
+                                                               "rawSegments":  {
+                                                                                   "ISA":  "ISA*00*          *00*          *ZZ*CLAIMSHIELD     *ZZ*BCBSTX         *240101*0900*^*00501*000000001*0*P*:",
+                                                                                   "GS":  "GS*HS*CLAIMSHIELD*BCBSTX*20240101*0900*1*X*005010X279A1",
+                                                                                   "ST":  "ST*271*0001*005010X279A1",
+                                                                                   "BHT":  "BHT*0022*11*CHS-270-BCBS-75571-001*20240101*0900",
+                                                                                   "EB":  "EB*1*IND*30*HM**27*1**27",
+                                                                                   "UM":  "UM*SC*I*****Y"
+                                                                               }
+                                                           },
+                                          "checked_at":  "2026-06-02T22:37:09.455925"
+                                      },
+                   "pa_criteria":  [
+                                       "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                       "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                       "Referring provider note on file documenting the basis for the referral and relevant clinical history."
+                                   ],
+                   "pa_not_required":  false,
+                   "policy_retrieval":  {
+                                            "payer_id":  "bcbs_tx",
+                                            "plan_type":  "commercial",
+                                            "cpt_code":  "75571",
+                                            "chunks":  [
+                                                           {
+                                                               "chunk_id":  "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                               "payer_id":  "bcbs_tx",
+                                                               "plan_type":  "commercial",
+                                                               "source_doc":  "BCBS_TX_Medical_Policy_MP-1.019_Cardiac_Imaging_v2024.pdf",
+                                                               "page_num":  3,
+                                                               "similarity_score":  0.8004494785190872,
+                                                               "cpt_codes":  [
+                                                                                 "75571"
+                                                                             ],
+                                                               "icd10_codes":  [
+                                                                                   "I25.10",
+                                                                                   "I25.110",
+                                                                                   "I25.700",
+                                                                                   "I20.9",
+                                                                                   "R07.9"
+                                                                               ],
+                                                               "source":  "vector_search"
+                                                           },
+                                                           {
+                                                               "chunk_id":  "7186927f-2b01-4e28-8f28-1b9d24bd9031",
+                                                               "payer_id":  "bcbs_tx",
+                                                               "plan_type":  "commercial",
+                                                               "source_doc":  "BCBS_TX_Medical_Policy_MP-1.019_Cardiac_Imaging_v2024.pdf",
+                                                               "page_num":  5,
+                                                               "similarity_score":  0.7811978384976772,
+                                                               "cpt_codes":  [
+                                                                                 "75571"
+                                                                             ],
+                                                               "icd10_codes":  [
+                                                                                   "I25.10"
+                                                                               ],
+                                                               "source":  "vector_search"
+                                                           },
+                                                           {
+                                                               "chunk_id":  "2bcd450a-38fb-4d1b-857d-4a8889cbe81b",
+                                                               "payer_id":  "bcbs_tx",
+                                                               "plan_type":  "commercial",
+                                                               "source_doc":  "BCBS_TX_Medical_Policy_MP-1.019_Cardiac_Imaging_v2024.pdf",
+                                                               "page_num":  4,
+                                                               "similarity_score":  0.7740113947350814,
+                                                               "cpt_codes":  [
+                                                                                 "75571"
+                                                                             ],
+                                                               "icd10_codes":  [
+                                                                                   "I25.10",
+                                                                                   "I25.110"
+                                                                               ],
+                                                               "source":  "vector_search"
+                                                           }
+                                                       ],
+                                            "total_retrieved":  3,
+                                            "retrieval_strategy":  "vector_search",
+                                            "cache_hit":  true
+                                        },
+                   "gap_analysis":  {
+                                        "criteria_evaluated":  [
+                                                                   {
+                                                                       "criterion_id":  "CRIT-01",
+                                                                       "criterion_text":  "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                                                       "status":  "ambiguous",
+                                                                       "evidence_from_notes":  null,
+                                                                       "supporting_chunk_ids":  [
+                                                                                                    "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                    "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                ],
+                                                                       "recommendation":  "Review chart for additional supporting documentation."
+                                                                   },
+                                                                   {
+                                                                       "criterion_id":  "CRIT-02",
+                                                                       "criterion_text":  "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                                                       "status":  "ambiguous",
+                                                                       "evidence_from_notes":  null,
+                                                                       "supporting_chunk_ids":  [
+                                                                                                    "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                    "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                ],
+                                                                       "recommendation":  "Review chart for additional supporting documentation."
+                                                                   },
+                                                                   {
+                                                                       "criterion_id":  "CRIT-03",
+                                                                       "criterion_text":  "Referring provider note on file documenting the basis for the referral and relevant clinical history.",
+                                                                       "status":  "ambiguous",
+                                                                       "evidence_from_notes":  null,
+                                                                       "supporting_chunk_ids":  [
+                                                                                                    "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                    "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                ],
+                                                                       "recommendation":  "Review chart for additional supporting documentation."
+                                                                   }
+                                                               ],
+                                        "met_count":  0,
+                                        "missing_count":  0,
+                                        "ambiguous_count":  3,
+                                        "conflict_count":  0,
+                                        "code_audit_warnings":  [
+
+                                                                ],
+                                        "code_mismatch_warning":  {
+                                                                      "detected":  false,
+                                                                      "cpt_code":  "75571",
+                                                                      "icd10_codes":  [
+                                                                                          "I25.10"
+                                                                                      ],
+                                                                      "warning_message":  "The procedure code does not align with the documented diagnosis codes. Please confirm before proceeding."
+                                                                  },
+                                        "overall_risk":  "low",
+                                        "analyst_summary":  "Automated analysis unavailable â manual review required. Error: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods."
+                                    },
+                   "code_mismatch_warning":  {
+                                                 "detected":  false,
+                                                 "cpt_code":  "75571",
+                                                 "icd10_codes":  [
+                                                                     "I25.10"
+                                                                 ],
+                                                 "warning_message":  "The procedure code does not align with the documented diagnosis codes. Please confirm before proceeding."
+                                             },
+                   "draft":  {
+                                 "justification_letter":  {
+                                                              "draft_id":  "DRAFT-850151AE",
+                                                              "version":  1,
+                                                              "content":  "[DRAFT UNAVAILABLE â automated drafting failed: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.]\n\nPlease draft the prior authorization letter manually based on the gap analysis above.",
+                                                              "cited_policy_chunk_ids":  [
+                                                                                             "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                             "7186927f-2b01-4e28-8f28-1b9d24bd9031",
+                                                                                             "2bcd450a-38fb-4d1b-857d-4a8889cbe81b"
+                                                                                         ],
+                                                              "word_count":  47,
+                                                              "generated_at":  "2026-06-02T22:37:34.462568"
+                                                          },
+                                 "gap_report":  {
+                                                    "report_id":  "RPT-7FFA99B1",
+                                                    "checklist_items":  [
+                                                                            {
+                                                                                "criterion_id":  "CRIT-01",
+                                                                                "criterion_text":  "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                                                                "status":  "ambiguous",
+                                                                                "evidence_from_notes":  null,
+                                                                                "supporting_chunk_ids":  [
+                                                                                                             "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                             "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                         ],
+                                                                                "recommendation":  "Review chart for additional supporting documentation."
+                                                                            },
+                                                                            {
+                                                                                "criterion_id":  "CRIT-02",
+                                                                                "criterion_text":  "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                                                                "status":  "ambiguous",
+                                                                                "evidence_from_notes":  null,
+                                                                                "supporting_chunk_ids":  [
+                                                                                                             "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                             "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                         ],
+                                                                                "recommendation":  "Review chart for additional supporting documentation."
+                                                                            },
+                                                                            {
+                                                                                "criterion_id":  "CRIT-03",
+                                                                                "criterion_text":  "Referring provider note on file documenting the basis for the referral and relevant clinical history.",
+                                                                                "status":  "ambiguous",
+                                                                                "evidence_from_notes":  null,
+                                                                                "supporting_chunk_ids":  [
+                                                                                                             "665f0df6-1eb1-421a-985c-443c8279a1b5",
+                                                                                                             "7186927f-2b01-4e28-8f28-1b9d24bd9031"
+                                                                                                         ],
+                                                                                "recommendation":  "Review chart for additional supporting documentation."
+                                                                            }
+                                                                        ],
+                                                    "action_items":  [
+                                                                         "Review chart for additional supporting documentation."
+                                                                     ],
+                                                    "generated_at":  "2026-06-02T22:37:34.462568"
+                                                }
+                             },
+                   "patient_impact":  {
+                                          "estimated_wait_time_saved":  "up to 6 days",
+                                          "auth_failure_risk":  "Reduced: 0 of 3 criteria pre-checked before submission",
+                                          "patient_note":  "Faster authorization means faster access to care for this patient."
+                                      },
+                   "scoring":  {
+                                   "scores":  [
+                                                  {
+                                                      "criterion_id":  "SC-01",
+                                                      "criterion_text":  "Cardiology evaluation within the past 12 months documenting symptoms consistent with coronary artery disease, including a formal cardiology consultation note signed by a board-eligible or board-certified cardiologist.",
+                                                      "score":  "flag",
+                                                      "rationale":  "Manual review required."
+                                                  },
+                                                  {
+                                                      "criterion_id":  "SC-02",
+                                                      "criterion_text":  "Imaging indication clearly stated by the ordering physician, including the specific clinical question and how the imaging result will change patient management.",
+                                                      "score":  "flag",
+                                                      "rationale":  "Manual review required."
+                                                  },
+                                                  {
+                                                      "criterion_id":  "SC-03",
+                                                      "criterion_text":  "Referring provider note on file documenting the basis for the referral and relevant clinical history.",
+                                                      "score":  "flag",
+                                                      "rationale":  "Manual review required."
+                                                  }
+                                              ],
+                                   "pass_count":  0,
+                                   "flag_count":  3,
+                                   "fail_count":  0,
+                                   "readiness_score":  0.0,
+                                   "submission_readiness":  "needs_review",
+                                   "reviewer_notes":  "Scoring unavailable: 404 models/gemini-1.5-flash is not found for API version v1beta, or is not supported for generateContent. Call ModelService.ListModels to see the list of available models and their supported methods.",
+                                   "scored_at":  "2026-06-02T22:37:46.792399"
+                               },
+                   "patient":  {
+                                   "patient_id":  "P001",
+                                   "first_name":  "James",
+                                   "last_name":  "Mitchell",
+                                   "date_of_birth":  "1966-03-15",
+                                   "gender":  "male",
+                                   "member_id":  "BCBS-PPO-7734521",
+                                   "group_number":  "GRP-44891"
+                               }
+               }
+}
