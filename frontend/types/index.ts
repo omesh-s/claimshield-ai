@@ -325,6 +325,18 @@ export interface DemoCaseOption {
   scenario_tags: string[];
 }
 
+/** Full demo case from GET /demo-cases/{case_id} — canonical order from backend. */
+export interface DemoCaseDetail {
+  case_id: string;
+  label: string;
+  description: string;
+  scenario_tags: string[];
+  order: OrderRequest;
+  patient_name: string;
+  payer_display: string;
+  denial_id?: string | null;
+}
+
 export interface HealthResponse {
   status: string;
   version: string;

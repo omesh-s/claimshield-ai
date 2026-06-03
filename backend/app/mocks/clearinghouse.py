@@ -76,6 +76,53 @@ class X12EligibilityResponse(BaseModel):
 
 _MOCK_RESPONSES: dict[tuple[str, str, str], X12EligibilityResponse] = {}
 
+# Default plan_type per payer when the order omits it (common frontend/API gap).
+_PAYER_DEFAULT_PLAN: dict[str, str] = {
+    "bcbs_tx": "commercial",
+    "unitedhealthcare": "hmo",
+    "united": "hmo",
+    "aetna": "ppo",
+}
+
+# Normalize payer aliases to registered mock keys.
+_PAYER_ALIASES: dict[str, str] = {
+    "united": "unitedhealthcare",
+    "uhc": "unitedhealthcare",
+}
+
+# Map UI / display plan labels to registry plan_type keys.
+_PLAN_ALIASES: dict[str, str] = {
+    "hmo": "hmo",
+    "ppo": "ppo",
+    "commercial ppo": "commercial",
+    "commercial_ppo": "commercial",
+    "commercial hmo": "hmo",
+    "commercial_hmo": "hmo",
+}
+
+# Payer-specific: legacy order payloads still use "commercial" for Aetna PPO demos.
+_PAYER_PLAN_OVERRIDES: dict[str, dict[str, str]] = {
+    "aetna": {"commercial": "ppo"},
+}
+
+
+def normalize_pa_lookup_key(
+    payer_id: str,
+    plan_type: str,
+    cpt_code: str,
+) -> tuple[str, str, str]:
+    """Normalize payer/plan/CPT for clearinghouse registry lookup."""
+    payer = (payer_id or "").strip().lower()
+    payer = _PAYER_ALIASES.get(payer, payer)
+    plan = (plan_type or "").strip().lower()
+    plan = _PLAN_ALIASES.get(plan, plan)
+    if not plan:
+        plan = _PAYER_DEFAULT_PLAN.get(payer, plan)
+    payer_plans = _PAYER_PLAN_OVERRIDES.get(payer, {})
+    plan = payer_plans.get(plan, plan)
+    cpt = (cpt_code or "").strip()
+    return payer, plan, cpt
+
 
 def register_mock_data() -> None:
     """
@@ -140,7 +187,59 @@ def register_mock_data() -> None:
         ),
     )
 
-    # --- United Healthcare / commercial_hmo / 75561 (Cardiac MRI) ---
+    # --- United Healthcare / hmo / 75561 (Cardiac MRI — DEMO-002) ---
+    register_mock_response(
+        "unitedhealthcare", "hmo", "75561",
+        X12EligibilityResponse(
+            transactionId="CHS-270-UHC-75561-HMO-001",
+            memberId="UHC-HMO-4482019",
+            payerId="unitedhealthcare",
+            planType="hmo",
+            procedureCode="75561",
+            authRequired=True,
+            authRequiredReason=(
+                "Prior authorization required for Cardiac MRI (CPT 75561) under UHC HMO "
+                "plans per Clinical Policy CP-CARD-008."
+            ),
+            criteria=[
+                X12AuthCriterion(
+                    criterionId="UHC-75561-HMO-C1",
+                    description=(
+                        "Cardiology consultation note from a board-certified cardiologist "
+                        "documenting the clinical indication for cardiac MRI within the "
+                        "past 12 months."
+                    ),
+                    required=True,
+                ),
+                X12AuthCriterion(
+                    criterionId="UHC-75561-HMO-C2",
+                    description=(
+                        "Echocardiogram results on file showing reduced ejection fraction "
+                        "or structural abnormality that warrants further characterization by MRI."
+                    ),
+                    required=True,
+                ),
+                X12AuthCriterion(
+                    criterionId="UHC-75561-HMO-C3",
+                    description=(
+                        "Ordering physician credentials confirming cardiology specialty or "
+                        "documented referral from a cardiologist."
+                    ),
+                    required=True,
+                ),
+            ],
+            confidence=0.97,
+            responseDate=today,
+            rawSegments={
+                "ISA": "ISA*00*          *00*          *ZZ*CLAIMSHIELD     *ZZ*UHCOFAMERICA   *240101*0900*^*00501*000000002*0*P*:",
+                "ST":  "ST*271*0002*005010X279A1",
+                "EB":  "EB*1*IND*86*HM**27*1**27",
+                "UM":  "UM*SC*I*****Y",
+            },
+        ),
+    )
+
+    # --- United Healthcare / commercial_hmo / 75561 (legacy key alias) ---
     register_mock_response(
         "unitedhealthcare", "commercial_hmo", "75561",
         X12EligibilityResponse(
@@ -197,7 +296,49 @@ def register_mock_data() -> None:
         ),
     )
 
-    # --- Aetna / commercial / 75571 (Coronary CTA) ---
+    # --- Aetna / ppo / 75571 (Coronary CTA — DEMO-003 code mismatch) ---
+    register_mock_response(
+        "aetna", "ppo", "75571",
+        X12EligibilityResponse(
+            transactionId="CHS-270-AETNA-75571-PPO-001",
+            memberId="AETNA-PPO-9901344",
+            payerId="aetna",
+            planType="ppo",
+            procedureCode="75571",
+            authRequired=True,
+            authRequiredReason=(
+                "Prior authorization required for CPT 75571 under Aetna PPO plans."
+            ),
+            criteria=[
+                X12AuthCriterion(
+                    criterionId="AETNA-75571-PPO-C1",
+                    description=(
+                        "Clinical documentation confirming the procedure is indicated for "
+                        "the submitted diagnosis code."
+                    ),
+                    required=True,
+                ),
+                X12AuthCriterion(
+                    criterionId="AETNA-75571-PPO-C2",
+                    description=(
+                        "Ordering physician attestation that CPT and ICD-10 codes are "
+                        "clinically consistent."
+                    ),
+                    required=True,
+                ),
+            ],
+            confidence=0.95,
+            responseDate=today,
+            rawSegments={
+                "ISA": "ISA*00*          *00*          *ZZ*CLAIMSHIELD     *ZZ*AETNAINCORPCTD *240101*0900*^*00501*000000003*0*P*:",
+                "ST":  "ST*271*0003*005010X279A1",
+                "EB":  "EB*1*IND*30*HM**27*1**27",
+                "UM":  "UM*SC*I*****Y",
+            },
+        ),
+    )
+
+    # --- Aetna / commercial / 75571 (legacy key alias) ---
     register_mock_response(
         "aetna", "commercial", "75571",
         X12EligibilityResponse(
@@ -275,6 +416,12 @@ async def check_prior_auth_required(
     Simulate an X12 270 → 271 clearinghouse round-trip.
     Returns X12EligibilityResponse or raises LookupError on unknown combination.
     """
+    if not _MOCK_RESPONSES:
+        register_mock_data()
+
+    payer_id, plan_type, cpt_code = normalize_pa_lookup_key(
+        payer_id, plan_type, cpt_code
+    )
     key = (payer_id, plan_type, cpt_code)
     response = _MOCK_RESPONSES.get(key)
     if response is None:

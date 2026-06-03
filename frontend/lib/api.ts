@@ -10,6 +10,7 @@ import type {
   OrderRequest,
   WorkflowStep,
   DemoCaseOption,
+  DemoCaseDetail,
   DenialEvent,
   AppealLetter,
   RecordBundle,
@@ -69,6 +70,8 @@ export const pitchApi = {
 
 export const demoCasesApi = {
   list: () => request<DemoCaseOption[]>("/demo-cases"),
+
+  get: (caseId: string) => request<DemoCaseDetail>(`/demo-cases/${caseId}`),
 };
 
 // ---------------------------------------------------------------------------
@@ -86,11 +89,15 @@ export const demoCasesApi = {
  * forwards the streaming response body.
  */
 export const ordersApi = {
-  async *processStream(order: OrderRequest): AsyncGenerator<SSEEvent, void, undefined> {
+  async *processStream(
+    order: OrderRequest,
+    signal?: AbortSignal,
+  ): AsyncGenerator<SSEEvent, void, undefined> {
     const response = await fetch(`${BASE}/process-order`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ order }),
+      signal,
     });
 
     if (!response.ok || !response.body) {

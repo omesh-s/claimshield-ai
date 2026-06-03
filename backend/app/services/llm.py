@@ -113,7 +113,7 @@ async def generate_json(prompt: str, context: str = "") -> dict[str, Any]:
         logger.info(
             "llm.token_usage",
             call_type="generate_json",
-            model=settings.gemini_model,
+            model=get_settings().gemini_model,
             input_tokens=getattr(usage, "prompt_token_count", None),
             output_tokens=getattr(usage, "candidates_token_count", None),
             total_tokens=getattr(usage, "total_token_count", None),
@@ -151,7 +151,7 @@ async def generate_text(prompt: str, context: str = "") -> str:
         logger.info(
             "llm.token_usage",
             call_type="generate_text",
-            model=settings.gemini_model,
+            model=get_settings().gemini_model,
             input_tokens=getattr(usage, "prompt_token_count", None),
             output_tokens=getattr(usage, "candidates_token_count", None),
             total_tokens=getattr(usage, "total_token_count", None),
@@ -167,7 +167,8 @@ def _embed_with_fallback(content: str, task_type: str) -> list[float]:
       models/gemini-embedding-001  (primary,  3072 dims)
       models/gemini-embedding-2    (fallback, 3072 dims)
     """
-    candidates = [settings.embedding_model, settings.embedding_model_fallback]
+    cfg = get_settings()
+    candidates = [cfg.embedding_model, cfg.embedding_model_fallback]
     last_exc: Exception | None = None
     for model_id in candidates:
         try:
@@ -176,7 +177,7 @@ def _embed_with_fallback(content: str, task_type: str) -> list[float]:
                 content=content,
                 task_type=task_type,
             )
-            if model_id != settings.embedding_model:
+            if model_id != cfg.embedding_model:
                 logger.info("llm.embed.fallback_used", model=model_id)
             return result["embedding"]
         except Exception as exc:

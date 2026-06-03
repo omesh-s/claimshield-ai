@@ -1,6 +1,6 @@
 # =============================================================================
-# ClaimShield AI — backend (Python / FastAPI)
-# Root .gitignore also applies.
+# ClaimShield AI — repository-wide ignore rules
+# Subdirectory .gitignore files (backend/, frontend/) add scoped rules.
 # =============================================================================
 
 # --- Secrets & environment ---
@@ -10,7 +10,13 @@
 .env.staging
 .env.*.local
 *.env
-!.env.example
+backend/.env
+frontend/.env.local
+frontend/.env.production
+
+# Allow committed environment templates (negate ignore above)
+!**/.env.example
+!**/.env.local.example
 
 # --- Python ---
 __pycache__/
@@ -36,6 +42,18 @@ htmlcov/
 *.cover
 coverage.xml
 *.log
+
+# --- Node / Next.js ---
+node_modules/
+.next/
+out/
+.vercel/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.tsbuildinfo
+next-env.d.ts
 
 # --- Database & Docker ---
 *.sqlite
@@ -75,3 +93,8 @@ service-account*.json
 .cache/
 tmp/
 temp/
+
+# --- Local demo / debug artifacts (repo root) ---
+.demo*.json
+.uvicorn*.log
+.uvicorn*.err

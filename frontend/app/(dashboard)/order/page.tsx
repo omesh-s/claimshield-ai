@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import {
   CheckCircle2,
@@ -38,7 +39,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { ordersApi, denialApi, demoCaseApi, recordsApi } from "@/lib/api";
+import { ordersApi, denialApi, demoCaseApi, demoCasesApi, recordsApi } from "@/lib/api";
 import { getDeadlineRule, calcDeadline } from "@/lib/filing-deadlines";
 import type {
   OrderRequest,
@@ -62,70 +63,51 @@ const LABEL = "block text-xs font-medium text-muted-foreground mb-1";
 const TOAST_OPTS = { duration: 4000 } as const;
 
 // ---------------------------------------------------------------------------
-// Demo cases
+// Demo cases — UI metadata only; orders load from GET /demo-cases/{id}
 // ---------------------------------------------------------------------------
-interface DemoCase {
+interface DemoCaseMeta {
   case_id: string;
   label: string;
-  patientName: string;
-  payer: string;
   tags: string[];
   tagColors: string[];
   bannerClass: string;
   bannerLabel: string;
-  order: OrderRequest;
 }
 
-const DEMO_CASES: DemoCase[] = [
+interface LoadedDemoCase extends DemoCaseMeta {
+  patientName: string;
+  payer: string;
+  clinicalNotes?: string;
+}
+
+const DEMO_CASE_META: DemoCaseMeta[] = [
   {
     case_id: "DEMO-001",
     label: "Missing Cardiology Note",
-    patientName: "James Mitchell",
-    payer: "BCBS Texas PPO",
     tags: ["Missing Doc", "Cardiac CTA", "Primary Demo"],
     tagColors: ["bg-red-100 text-red-700", "bg-blue-100 text-blue-700", "bg-emerald-100 text-emerald-700"],
     bannerClass: "bg-blue-50 border-blue-200 text-blue-800",
     bannerLabel: "Primary Demo: Missing Cardiology Note",
-    order: {
-      patient_id: "P001", payer_id: "bcbs_tx", plan_type: "commercial",
-      cpt_code: "75571", procedure_description: "CT angiography of the heart",
-      icd10_codes: ["I25.10"], ordering_provider_npi: "1234567890",
-      ordering_provider_name: "Dr. Sarah Chen",
-    },
   },
   {
     case_id: "DEMO-002",
     label: "Clean Approval",
-    patientName: "Sarah Chen",
-    payer: "United Healthcare HMO",
     tags: ["All Criteria Met", "Cardiac MRI", "Clean"],
     tagColors: ["bg-emerald-100 text-emerald-700", "bg-blue-100 text-blue-700", "bg-gray-100 text-gray-700"],
     bannerClass: "bg-emerald-50 border-emerald-200 text-emerald-800",
     bannerLabel: "Clean Approval Scenario",
-    order: {
-      patient_id: "P002", payer_id: "unitedhealthcare", plan_type: "commercial_hmo",
-      cpt_code: "75561", procedure_description: "Cardiac MRI without contrast",
-      icd10_codes: ["I42.9"], ordering_provider_npi: "0987654321",
-      ordering_provider_name: "Dr. Michael Torres",
-    },
   },
   {
     case_id: "DEMO-003",
     label: "Code Mismatch Warning",
-    patientName: "Robert Torres",
-    payer: "Aetna PPO",
     tags: ["Code Mismatch", "Cardiac CTA", "Pneumonia Dx"],
     tagColors: ["bg-red-100 text-red-700", "bg-blue-100 text-blue-700", "bg-amber-100 text-amber-700"],
     bannerClass: "bg-amber-50 border-amber-200 text-amber-800",
     bannerLabel: "Code Mismatch Warning Scenario",
-    order: {
-      patient_id: "P003", payer_id: "aetna", plan_type: "commercial",
-      cpt_code: "75571", procedure_description: "CT angiography of the heart",
-      icd10_codes: ["J18.9"], ordering_provider_npi: "1122334455",
-      ordering_provider_name: "Dr. Lisa Park",
-    },
   },
 ];
+
+const SSE_TIMEOUT_MS = 8 * 60 * 1000;
 
 const PAYER_OPTIONS = [
   { id: "bcbs_tx", label: "BCBS Texas PPO", planType: "commercial" },
@@ -278,6 +260,11 @@ function WorkflowTimeline({
                     <span className="text-[10px] text-muted-foreground tabular-nums">
                       {(state.elapsedMs / 1000).toFixed(1)}s
                     </span>
+                  )}
+                  {step.key === "retrieve" && state.status === "complete" && state.data?.cache_hit === true && (
+                    <Badge className="text-[9px] h-4 px-1 bg-emerald-100 text-emerald-700 border-emerald-200">
+                      Policy cache hit
+                    </Badge>
                   )}
                   {state.status === "error" && (
                     <span className="text-[10px] text-red-500">failed</span>
@@ -750,12 +737,17 @@ function PrintableReport({
 // Main page component
 // ---------------------------------------------------------------------------
 export default function OrderPage() {
+  const router = useRouter();
   const [form, setForm] = useState<Partial<OrderRequest>>({ payer_id: "", plan_type: "", icd10_codes: [] });
   const [icd10Input, setIcd10Input] = useState("");
-  const [loadedCase, setLoadedCase] = useState<DemoCase | null>(null);
+  const [loadedCase, setLoadedCase] = useState<LoadedDemoCase | null>(null);
+  const [demoLoadId, setDemoLoadId] = useState<string | null>(null);
 
   const [runState, setRunState] = useState<RunState>({ status: "idle", steps: initSteps() });
   const stepTimings = useRef<Record<string, number>>({});
+  const streamAbortRef = useRef<AbortController | null>(null);
+  const [workflowHeartbeat, setWorkflowHeartbeat] = useState(false);
+  const [liveScoring, setLiveScoring] = useState<ScoringResult | null>(null);
 
   // Tick for live elapsed counter — re-renders every second while running
   const [tick, setTick] = useState(0);
@@ -790,18 +782,40 @@ export default function OrderPage() {
     }
   };
 
-  const loadDemoCase = (demo: DemoCase) => {
-    setForm(demo.order);
-    setIcd10Input(demo.order.icd10_codes.join(", "));
-    setLoadedCase(demo);
-    setShowDemoModal(false);
-    toast.success("Demo case loaded", {
-      description: `${demo.label} — click Submit to run the workflow.`,
-      ...TOAST_OPTS,
-    });
+  const loadDemoCase = async (caseId: string) => {
+    const meta = DEMO_CASE_META.find((d) => d.case_id === caseId);
+    if (!meta) return;
+    setDemoLoadId(caseId);
+    try {
+      const detail = await demoCasesApi.get(caseId);
+      setForm(detail.order);
+      setIcd10Input(detail.order.icd10_codes.join(", "));
+      setLoadedCase({
+        ...meta,
+        patientName: detail.patient_name,
+        payer: detail.payer_display,
+        clinicalNotes: detail.order.clinical_notes,
+      });
+      setShowDemoModal(false);
+      toast.success("Demo case loaded", {
+        description: `${detail.label} — click Submit to run the workflow.`,
+        ...TOAST_OPTS,
+      });
+    } catch (err) {
+      toast.error("Failed to load demo case", {
+        description: err instanceof Error ? err.message : "Unknown error",
+        ...TOAST_OPTS,
+      });
+    } finally {
+      setDemoLoadId(null);
+    }
   };
 
   const resetWorkspace = () => {
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setWorkflowHeartbeat(false);
+    setLiveScoring(null);
     setRunState({ status: "idle", steps: initSteps() });
     setDraftContent("");
     setShowRevisionField(false);
@@ -872,9 +886,14 @@ export default function OrderPage() {
       });
       setPackagedBundle(bundle);
       toast.success("Records packaged", {
-        description: `${bundle.total_artifacts} artifacts assembled for payer submission.`,
+        description: `${bundle.total_artifacts} artifacts assembled — view in Record Packages.`,
+        action: {
+          label: "View Records",
+          onClick: () => router.push("/records"),
+        },
         ...TOAST_OPTS,
       });
+      router.push("/records");
     } catch (err) {
       toast.error("Packaging failed", {
         description: err instanceof Error ? err.message : "Unknown error",
@@ -919,6 +938,11 @@ export default function OrderPage() {
       return;
     }
 
+    streamAbortRef.current?.abort();
+    const abortController = new AbortController();
+    streamAbortRef.current = abortController;
+    const timeoutId = setTimeout(() => abortController.abort(), SSE_TIMEOUT_MS);
+
     setRunState({ status: "starting", steps: initSteps() });
     setDraftContent("");
     setDenialEvent(null);
@@ -926,6 +950,8 @@ export default function OrderPage() {
     setPackagedBundle(null);
     setApproved(false);
     setActiveTab("justification");
+    setWorkflowHeartbeat(false);
+    setLiveScoring(null);
 
     toast.info("Workflow started", {
       description: `Processing ${order.cpt_code} for ${PAYER_OPTIONS.find((p) => p.id === order.payer_id)?.label ?? order.payer_id}…`,
@@ -941,8 +967,12 @@ export default function OrderPage() {
     };
 
     try {
-      const stream = ordersApi.processStream(order);
+      const stream = ordersApi.processStream(order, abortController.signal);
       for await (const event of stream) {
+        if (event.event === "heartbeat") {
+          setWorkflowHeartbeat(true);
+          continue;
+        }
         if (event.event === "started") {
           setRunState((s) => ({ ...s, status: "running", runId: event.run_id }));
         } else if (event.event === "step_update") {
@@ -964,6 +994,23 @@ export default function OrderPage() {
             if (STEP_TOASTS[stepKey]) {
               toast.success(STEP_TOASTS[stepKey], TOAST_OPTS);
             }
+            if (stepKey === "score" && event.data?.readiness_score != null) {
+              const d = event.data;
+              setLiveScoring({
+                readiness_score: d.readiness_score ?? 0,
+                pass_count: d.pass ?? 0,
+                flag_count: d.flag ?? 0,
+                fail_count: d.fail ?? 0,
+                submission_readiness:
+                  d.fail && d.fail > 0
+                    ? "not_ready"
+                    : d.recommendation === "ready_for_review"
+                    ? "ready"
+                    : "needs_review",
+                scores: [],
+                reviewer_notes: "Score step complete — full breakdown loading…",
+              });
+            }
             setRunState((s) => ({
               ...s,
               steps: { ...s.steps, [stepKey]: { status: "complete", elapsedMs: elapsed, data: event.data as Record<string, unknown> } },
@@ -975,13 +1022,12 @@ export default function OrderPage() {
             }));
           }
         } else if (event.event === "pa_not_required") {
-          setRunState((s) => ({ ...s, status: "complete", result: event.result, totalElapsedMs: event.elapsed_ms }));
-          toast.success("PA not required for this order.", TOAST_OPTS);
-          return;
+          toast.success(event.message ?? "PA not required for this order.", TOAST_OPTS);
         } else if (event.event === "complete") {
           const result = event.result;
           if (result) {
             setDraftContent(result.draft?.justification_letter?.content ?? "");
+            if (result.scoring) setLiveScoring(result.scoring);
             if (result.code_mismatch_warning?.detected) {
               setPendingMismatch(result.code_mismatch_warning);
               setShowMismatchModal(true);
@@ -998,13 +1044,24 @@ export default function OrderPage() {
         }
       }
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Unknown error";
+      const aborted = abortController.signal.aborted;
+      const msg = aborted
+        ? "Workflow timed out after 8 minutes. Try again or use the sync endpoint fallback."
+        : err instanceof Error
+        ? err.message
+        : "Unknown error";
       setRunState((s) => ({ ...s, status: "error", error: msg }));
-      toast.error("Request failed", { description: msg, ...TOAST_OPTS });
+      toast.error(aborted ? "Workflow timed out" : "Request failed", { description: msg, ...TOAST_OPTS });
+    } finally {
+      clearTimeout(timeoutId);
+      streamAbortRef.current = null;
+      setWorkflowHeartbeat(false);
     }
   }, [form, icd10Input]);
 
   const result = runState.result;
+  const displayScoring = result?.scoring ?? liveScoring;
+  const hasWorkflowErrors = result?.errors && Object.keys(result.errors).length > 0;
   const isRunning = runState.status === "starting" || runState.status === "running";
   const isComplete = runState.status === "complete";
   const hasError = runState.status === "error";
@@ -1033,11 +1090,11 @@ export default function OrderPage() {
             <DialogDescription>Select a pre-seeded scenario to load into the order form.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-1">
-            {DEMO_CASES.map((demo) => (
+            {DEMO_CASE_META.map((demo) => (
               <div
                 key={demo.case_id}
                 className="p-3 rounded-lg border border-border hover:border-primary/40 hover:bg-muted/30 transition-all cursor-pointer"
-                onClick={() => loadDemoCase(demo)}
+                onClick={() => loadDemoCase(demo.case_id)}
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex-1 min-w-0">
@@ -1045,15 +1102,19 @@ export default function OrderPage() {
                       <span className="text-xs font-medium text-foreground">{demo.label}</span>
                       <span className="text-[10px] text-muted-foreground">· {demo.case_id}</span>
                     </div>
-                    <p className="text-xs text-muted-foreground mb-1.5">{demo.patientName} · {demo.payer}</p>
                     <div className="flex flex-wrap gap-1">
                       {demo.tags.map((tag, i) => (
                         <span key={tag} className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${demo.tagColors[i]}`}>{tag}</span>
                       ))}
                     </div>
                   </div>
-                  <Button size="sm" className="text-xs shrink-0" onClick={(e) => { e.stopPropagation(); loadDemoCase(demo); }}>
-                    Load <ChevronRight className="w-3 h-3" />
+                  <Button
+                    size="sm"
+                    className="text-xs shrink-0"
+                    disabled={demoLoadId === demo.case_id || isRunning}
+                    onClick={(e) => { e.stopPropagation(); loadDemoCase(demo.case_id); }}
+                  >
+                    {demoLoadId === demo.case_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <>Load <ChevronRight className="w-3 h-3" /></>}
                   </Button>
                 </div>
               </div>
@@ -1092,7 +1153,10 @@ export default function OrderPage() {
                 </div>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground">Staff must review and confirm before the letter is finalized.</p>
+            <p className="text-xs text-muted-foreground">
+              Staff must review and confirm before the letter is finalized. The workflow continues in the
+              background while this dialog is open — closing it does not stop processing.
+            </p>
           </div>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => { setShowMismatchModal(false); resetWorkspace(); }}>
@@ -1136,6 +1200,21 @@ export default function OrderPage() {
                 {loadedCase.bannerLabel}
                 <span className="ml-auto text-[10px] opacity-70">{loadedCase.case_id}</span>
               </div>
+            )}
+
+            {loadedCase?.clinicalNotes && (
+              <Card>
+                <CardHeader className="pb-1 pt-3">
+                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Clinical Notes (preview)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pb-3">
+                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
+                    {loadedCase.clinicalNotes}
+                  </p>
+                </CardContent>
+              </Card>
             )}
 
             {/* Order form */}
@@ -1212,7 +1291,15 @@ export default function OrderPage() {
 
             {/* Workflow timeline */}
             {showResults && (
-              <WorkflowTimeline steps={runState.steps} runState={runState.status} tick={tick} />
+              <>
+                {workflowHeartbeat && isRunning && (
+                  <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Still processing — long-running AI steps in progress…
+                  </p>
+                )}
+                <WorkflowTimeline steps={runState.steps} runState={runState.status} tick={tick} />
+              </>
             )}
 
             {/* PA requirement skeleton/card */}
@@ -1267,9 +1354,20 @@ export default function OrderPage() {
                     Fill in the form and click Submit, or use Load Demo Case for a quick start.
                   </p>
                 </div>
-                <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => setShowDemoModal(true)}>
+                <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => setShowDemoModal(true)} disabled={isRunning}>
                   <FileText className="w-3.5 h-3.5" />Load Demo Case
                 </Button>
+              </div>
+            )}
+
+            {hasWorkflowErrors && (
+              <div className="flex items-start gap-2 p-3 rounded-md bg-amber-50 border border-amber-200">
+                <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-800">
+                  <span className="font-semibold">AI-assisted draft — manual review required.</span>{" "}
+                  One or more workflow steps used fallback output (
+                  {Object.keys(result?.errors ?? {}).join(", ")}).
+                </p>
               </div>
             )}
 
@@ -1292,12 +1390,12 @@ export default function OrderPage() {
                 {/* ── Justification Letter ── */}
                 <TabsContent value="justification">
                   <div className="space-y-3">
-                    {isRunning && runState.steps["score"]?.status !== "complete" && !result?.scoring && (
+                    {isRunning && !displayScoring && runState.steps["score"]?.status !== "complete" && (
                       <Card><CardContent className="pt-3 pb-3 space-y-2"><div className="flex items-center justify-between"><Skeleton className="h-3 w-24" /><Skeleton className="h-6 w-16" /></div>{[1, 2, 3].map((i) => <Skeleton key={i} className="h-6 w-full rounded" />)}</CardContent></Card>
                     )}
-                    {result?.scoring && (
+                    {displayScoring && (
                       <ScoreCard
-                        scoring={result.scoring}
+                        scoring={displayScoring}
                         onExport={handleExportForReview}
                         draftContent={draftContent}
                         result={result}

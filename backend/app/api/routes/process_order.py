@@ -122,58 +122,6 @@ async def process_order(
 
     sse_queue: asyncio.Queue = asyncio.Queue(maxsize=50)
 
-    async def _workflow_task() -> None:
-        try:
-            await run_workflow(
-                order=order_dict,
-                db=db,
-                run_id=run_id,
-                sse_queue=sse_queue,
-            )
-        except Exception as exc:
-            logger.error("process_order.workflow_fatal", run_id=run_id, error=str(exc), exc_info=True)
-        finally:
-            await sse_queue.put(None)   # sentinel — signals generator to stop
-
-    async def event_generator() -> AsyncGenerator[str, None]:
-        # Yield an immediate "started" event so the client knows the stream is live
-        yield _sse({
-            "event": "started",
-            "run_id": run_id,
-            "timestamp": datetime.utcnow().isoformat(),
-        })
-
-        # Start the workflow concurrently
-        task = asyncio.create_task(_workflow_task())
-
-        # Drain the SSE queue until the sentinel None is received
-        while True:
-            try:
-                event = await asyncio.wait_for(sse_queue.get(), timeout=120.0)
-            except asyncio.TimeoutError:
-                yield _sse({"event": "heartbeat", "run_id": run_id})
-                continue
-
-            if event is None:
-                break
-
-            if event.get("event") == "step_update":
-                yield _sse(event)
-
-        # Await the task to get the final state (it has already completed)
-        await task
-
-        # Re-run the workflow without SSE to get the final state
-        # (We need the final state — the task modified state internally but
-        #  we only get back step events. Run a second pass? No — instead,
-        #  store the state in a shared list from the task.)
-        # NOTE: pattern above doesn't return state. Fix: use a result holder.
-        # This is handled below via a different pattern.
-
-    # -----------------------------------------------------------------------
-    # Revised approach: collect state in a mutable holder, then stream result
-    # -----------------------------------------------------------------------
-
     async def event_generator_v2() -> AsyncGenerator[str, None]:
         result_holder: list[dict] = []
         error_holder:  list[str]  = []
@@ -218,6 +166,20 @@ async def process_order(
                 if event is None:
                     break
 
+                # Dedicated event for PA-not-required early exit (frontend handler)
+                if (
+                    event.get("event") == "step_update"
+                    and event.get("status") == "pa_not_required"
+                ):
+                    yield _sse({
+                        "event": "pa_not_required",
+                        "run_id": run_id,
+                        "message": (event.get("data") or {}).get(
+                            "message", "PA not required for this order."
+                        ),
+                    })
+                    continue
+
                 yield _sse(event)
         except asyncio.CancelledError:
             # Browser tab closed — cancel the workflow task to prevent zombie coroutines
@@ -245,14 +207,17 @@ async def process_order(
             "process_order.complete",
             run_id=run_id,
             elapsed_ms=elapsed_ms,
+            pa_not_required=final_state.get("pa_not_required", False),
             errors=list(final_state.get("errors", {}).keys()),
         )
 
+        # Terminal event — always includes step_statuses + partial/full result
         yield _sse({
             "event": "complete",
             "run_id": run_id,
             "elapsed_ms": elapsed_ms,
             "result": result,
+            "pa_not_required": final_state.get("pa_not_required", False),
         })
 
     return StreamingResponse(

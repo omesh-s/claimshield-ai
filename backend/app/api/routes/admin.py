@@ -89,24 +89,26 @@ async def reseed_demo_data() -> ReseedResponse:
 @router.post("/clear-cache", response_model=ClearCacheResponse, dependencies=[Depends(_require_admin_key)])
 async def clear_policy_cache() -> ClearCacheResponse:
     """
-    Flush all Redis policy chunk cache entries (policy_chunks:* keys).
+    Flush Redis policy chunk cache (policy_chunks:*) and score cache (score:*).
 
     After clearing, the next retrieval request for each payer/CPT combination
-    will hit pgvector and repopulate the cache.
+    will hit pgvector and repopulate the cache. Score cache clears ensure repeat
+    demo runs re-score instead of returning a stale 60-minute cached result.
     """
     try:
         redis = await get_redis()
         deleted = 0
-        async for key in redis.scan_iter("policy_chunks:*"):
-            await redis.delete(key)
-            deleted += 1
+        for pattern in ("policy_chunks:*", "score:*"):
+            async for key in redis.scan_iter(pattern):
+                await redis.delete(key)
+                deleted += 1
 
         logger.info("admin.clear_cache.complete", keys_deleted=deleted)
 
         return ClearCacheResponse(
             status="ok",
             keys_deleted=deleted,
-            message=f"Flushed {deleted} policy chunk cache entries.",
+            message=f"Flushed {deleted} policy and score cache entries.",
         )
     except Exception as exc:
         logger.error("admin.clear_cache.error", error=str(exc))

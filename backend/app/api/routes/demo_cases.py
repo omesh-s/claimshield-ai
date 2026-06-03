@@ -11,6 +11,7 @@ from app.data.demo_cases import (
     FILING_DEADLINE_RULES,
     APPEAL_CITATIONS,
 )
+from app.data.filing_deadlines import get_deadline_rule
 from app.data.patients import ORDER_REQUESTS, PATIENT_DEMOGRAPHICS
 
 router = APIRouter(prefix="/demo-cases", tags=["demo"])
@@ -49,11 +50,12 @@ async def get_demo_case(case_id: str) -> DemoCaseDetail:
         f"{patient.first_name} {patient.last_name}" if patient else order.patient_id
     )
 
-    payer_display_map = {
-        "bcbs_tx": "Blue Cross Blue Shield TX — Commercial PPO",
-        "unitedhealthcare": "United Healthcare — Commercial HMO",
-        "aetna": "Aetna — Commercial PPO",
-    }
+    deadline_rule = get_deadline_rule(order.payer_id)
+    plan_suffix = {
+        "commercial": "PPO",
+        "commercial_hmo": "HMO",
+    }.get(order.plan_type, order.plan_type.upper())
+    payer_display = f"{deadline_rule.payer_name} {plan_suffix}"
 
     denial_id = DENIAL_BY_DEMO_CASE.get(case_id)
 
@@ -64,7 +66,7 @@ async def get_demo_case(case_id: str) -> DemoCaseDetail:
         scenario_tags=case.scenario_tags,
         order=order,
         patient_name=patient_name,
-        payer_display=payer_display_map.get(order.payer_id, order.payer_id),
+        payer_display=payer_display,
         denial_id=denial_id,
     )
 

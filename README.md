@@ -22,8 +22,8 @@ Prior auth delays average 14 days and cost providers **$35B/year**. ~75% of deni
 | ID | Payer | Procedure | Scenario |
 |----|-------|-----------|----------|
 | **DEMO-001** | BCBS Texas PPO | CT Coronary Angiography — CPT 75571 | Missing cardiology note; gap flagged; appeal drafted |
-| **DEMO-002** | Aetna PPO | Physical Therapy — CPT 97110 | Eligibility pre-check; criteria met; clean package assembled |
-| **DEMO-003** | United Healthcare | Cardiac Rehabilitation — CPT 93798 | Denial received; Gemini auto-drafts appeal citing ACC/AHA 2021 |
+| **DEMO-002** | United Healthcare HMO | Cardiac MRI — CPT 75561 | All criteria met; clean approval package |
+| **DEMO-003** | Aetna PPO | Coronary CTA — CPT 75571 + J18.9 | Code mismatch modal; workflow completes after confirm |
 
 ---
 
@@ -158,7 +158,33 @@ Navigate to **http://localhost:3000** → click **New Order** → **Load Demo Ca
 4. Click **Approve and Package Records** — view submission checklist and chart artifacts
 5. Click **Trigger Mock Denial** — Gemini auto-drafts an appeal letter with guideline citations
 
-**Code mismatch detection:** Manually pair CPT `75571` with ICD-10 `J18.9` (pneumonia) and submit. A blocking modal fires during the Detect step — staff must confirm before the workflow continues.
+**Code mismatch detection:** Load **DEMO-003** (Robert Torres, CPT 75571 + ICD-10 J18.9). A blocking modal fires during the Detect step — staff must confirm; the workflow continues in the background while the modal is open.
+
+### Demo-day checklist (pre-live)
+
+1. **Infrastructure:** `docker compose up -d` (Postgres + Redis)
+2. **Seed (if empty DB):** `cd backend && python -m app.ingestion.seed --wipe`
+3. **Verify data:** `python scripts/verify_data.py` — all checks green (9 chunks, 3 demo cases, Redis, per-payer retrieval)
+4. **Backend env:** `GOOGLE_API_KEY` set in `backend/.env`; change `ADMIN_API_KEY` from default for judging laptops
+5. **Frontend env:** `frontend/.env.local` with `BACKEND_URL=http://127.0.0.1:8001/api/v1` (port **8001** avoids Windows port-8000 zombies; use `127.0.0.1` not `localhost`)
+6. **Start servers:**
+   - Backend: `uvicorn app.main:app --reload --host 127.0.0.1 --port 8001`
+   - Frontend: `npm run dev`
+7. **Health:** `curl http://127.0.0.1:8001/api/v1/health`
+8. **Warm or reset cache:** `POST /api/v1/admin/clear-cache` with `X-Admin-Key`, then run each DEMO-00x once before judges arrive (first run ~60–90s; repeats faster with Redis score/policy cache)
+9. **Expected outcomes:**
+
+| Case | Expected |
+|------|----------|
+| DEMO-001 | Missing cardiology note; readiness &lt; 100%; mock denial works |
+| DEMO-002 | All criteria met; stable score on repeat runs (after first cache warm) |
+| DEMO-003 | Mismatch modal; workflow completes after confirm |
+| Package | Row on **Record Packages** after Approve & Package |
+| Offline backend | “Backend offline” in app shell |
+
+**Fallback if Gemini fails:** `POST /api/v1/process-order/sync` returns blocking JSON for narrators.
+
+**Note:** In-memory package store resets on backend restart — re-assemble once if the records table is empty.
 
 ---
 
@@ -177,7 +203,7 @@ Base URL: `http://127.0.0.1:8000/api/v1`
 | `GET` | `/retrieval-test` | Debug RAG — inspect policy chunks for a payer/CPT |
 | `GET` | `/admin/status` | Live config: Redis, DB, LLM model |
 | `POST` | `/admin/reseed` | Re-register in-memory mock data |
-| `POST` | `/admin/clear-cache` | Flush Redis policy chunk cache |
+| `POST` | `/admin/clear-cache` | Flush Redis policy (`policy_chunks:*`) and score (`score:*`) caches |
 
 ---
 

@@ -40,6 +40,7 @@ from app.services.retrieval import retrieve_policy_chunks
 from app.services.rules import check_pa_requirement
 from app.services.cache import get_cached_score, set_cached_score
 from app.mocks.ehr import get_patient_demographics, get_chart_artifacts
+from app.mocks.clearinghouse import normalize_pa_lookup_key
 
 logger = get_logger(__name__)
 
@@ -246,10 +247,15 @@ async def _run_detect(state: PAWorkflowState) -> dict[str, Any]:
     demo = await get_patient_demographics(order["patient_id"])
     member_id = demo.member_id if demo else "UNKNOWN"
 
+    payer_id, plan_type, cpt_code = normalize_pa_lookup_key(
+        order["payer_id"],
+        order.get("plan_type", ""),
+        order["cpt_code"],
+    )
     pa_result = await check_pa_requirement(
-        payer_id=order["payer_id"],
-        plan_type=order["plan_type"],
-        cpt_code=order["cpt_code"],
+        payer_id=payer_id,
+        plan_type=plan_type,
+        cpt_code=cpt_code,
         icd10_codes=order["icd10_codes"],
         provider_npi=order["ordering_provider_npi"],
         member_id=member_id,
@@ -613,6 +619,42 @@ async def _run_draft(state: PAWorkflowState) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Score alignment — LLM may return fewer/more rows than pa_criteria
+# ---------------------------------------------------------------------------
+
+def _align_scores_to_criteria(
+    scores: list[CriterionScore],
+    pa_criteria: list[str],
+) -> list[CriterionScore]:
+    """Pad or truncate scores so readiness % matches criteria count."""
+    if not pa_criteria:
+        return scores
+    n = len(pa_criteria)
+    aligned: list[CriterionScore] = []
+    for i, crit in enumerate(pa_criteria):
+        if i < len(scores):
+            s = scores[i]
+            aligned.append(
+                CriterionScore(
+                    criterion_id=f"SC-{i+1:02d}",
+                    criterion_text=crit,
+                    score=s.score,
+                    rationale=s.rationale,
+                )
+            )
+        else:
+            aligned.append(
+                CriterionScore(
+                    criterion_id=f"SC-{i+1:02d}",
+                    criterion_text=crit,
+                    score="flag",
+                    rationale="Not scored by automated review — manual check required.",
+                )
+            )
+    return aligned
+
+
+# ---------------------------------------------------------------------------
 # Step 5: score
 # ---------------------------------------------------------------------------
 
@@ -671,15 +713,18 @@ async def _run_score(state: PAWorkflowState) -> dict[str, Any]:
                 }
 
     score_list = raw.get("scores", [])
-    scores = [
-        CriterionScore(
-            criterion_id=f"SC-{i+1:02d}",
-            criterion_text=s.get("criterion", f"Criterion {i+1}"),
-            score=s.get("status", "flag"),
-            rationale=s.get("note", ""),
-        )
-        for i, s in enumerate(score_list)
-    ]
+    scores = _align_scores_to_criteria(
+        [
+            CriterionScore(
+                criterion_id=f"SC-{i+1:02d}",
+                criterion_text=s.get("criterion", f"Criterion {i+1}"),
+                score=s.get("status", "flag"),
+                rationale=s.get("note", ""),
+            )
+            for i, s in enumerate(score_list)
+        ],
+        pa_criteria,
+    )
 
     pass_count = sum(1 for s in scores if s.score == "pass")
     flag_count = sum(1 for s in scores if s.score == "flag")

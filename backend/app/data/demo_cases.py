@@ -10,6 +10,7 @@ One denial case is seeded for DEMO-001 (post-denial appeal flow).
 """
 from __future__ import annotations
 
+from app.data.filing_deadlines import FILING_DEADLINES
 from app.models.schemas import (
     DemoCaseOption,
     DenialEvent,
@@ -128,63 +129,37 @@ APPEAL_CITATIONS: dict[str, list[dict]] = {
 }
 
 # ---------------------------------------------------------------------------
-# Filing deadline rules — Texas 95-day rule as primary demo example
+# Filing deadline rules — derived from app.data.filing_deadlines (canonical)
 # ---------------------------------------------------------------------------
 
-FILING_DEADLINE_RULES: list[FilingDeadlineRule] = [
-    FilingDeadlineRule(
-        rule_id="TX-95-DAY-COMMERCIAL",
-        state="TX",
-        payer_id=None,   # applies to all payers in Texas
-        plan_type="commercial",
-        deadline_days=95,
-        description=(
-            "Texas Insurance Code §1301.137 requires that claims for health care services "
-            "be submitted to a preferred provider benefit plan insurer no later than 95 days "
-            "after the date the health care services are provided. Late claims may be denied "
-            "for untimely filing regardless of medical necessity."
-        ),
-        source="Texas Insurance Code §1301.137 (TIC)",
-    ),
-    FilingDeadlineRule(
-        rule_id="TX-95-DAY-MEDICARE-ADV",
-        state="TX",
-        payer_id=None,
-        plan_type="medicare_advantage",
-        deadline_days=365,
-        description=(
-            "Medicare Advantage plans must accept claims submitted within 12 months (365 days) "
-            "of the date of service per CMS regulations (42 CFR §422.212). Texas-specific "
-            "commercial rules do not override federal MA filing requirements."
-        ),
-        source="42 CFR §422.212 (CMS)",
-    ),
-    FilingDeadlineRule(
-        rule_id="BCBS-TX-PA-RETRO-30",
-        state="TX",
-        payer_id="bcbs_tx",
-        plan_type="commercial",
-        deadline_days=30,
-        description=(
-            "BCBS TX accepts retroactive prior authorization requests only within 30 days "
-            "of the service date for emergent or urgent procedures where prior auth was not "
-            "obtainable before service. After 30 days, retroactive PA requests are denied."
-        ),
-        source="BCBS TX Provider Manual 2024, Section 7.4",
-    ),
-    FilingDeadlineRule(
-        rule_id="UHC-HMO-PA-RETRO-30",
-        state="TX",
-        payer_id="unitedhealthcare",
-        plan_type="commercial_hmo",
-        deadline_days=30,
-        description=(
-            "UnitedHealthcare HMO plans require that prior authorization be obtained before "
-            "non-emergent scheduled procedures. Retroactive authorization requests submitted "
-            "within 30 days of service may be considered for urgent situations only."
-        ),
-        source="UHC Texas Provider Manual 2024, Chapter 5",
-    ),
-]
+def _canonical_filing_rules() -> list[FilingDeadlineRule]:
+    """Build API filing rules from the single backend deadline source."""
+    seen_payer_ids: set[str] = set()
+    rules: list[FilingDeadlineRule] = []
+    for payer_id, rule in FILING_DEADLINES.items():
+        # Demo orders use unitedhealthcare; skip duplicate "united" alias
+        if payer_id == "united":
+            continue
+        if payer_id in seen_payer_ids:
+            continue
+        seen_payer_ids.add(payer_id)
+        rules.append(
+            FilingDeadlineRule(
+                rule_id=f"FILING-{payer_id.upper()}",
+                state=rule.state,
+                payer_id=payer_id,
+                plan_type="commercial",
+                deadline_days=rule.days,
+                description=(
+                    f"{rule.payer_name}: claims must be filed within {rule.days} days "
+                    f"of service per {rule.rule}."
+                ),
+                source=rule.rule,
+            )
+        )
+    return rules
+
+
+FILING_DEADLINE_RULES: list[FilingDeadlineRule] = _canonical_filing_rules()
 
 FILING_RULES_BY_ID: dict[str, FilingDeadlineRule] = {r.rule_id: r for r in FILING_DEADLINE_RULES}
