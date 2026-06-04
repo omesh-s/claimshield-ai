@@ -792,6 +792,8 @@ export default function OrderPage() {
   const [draftContent, setDraftContent] = useState("");
   const [showRevisionField, setShowRevisionField] = useState(false);
   const [revisionNotes, setRevisionNotes] = useState("");
+  const [revisionLoading, setRevisionLoading] = useState(false);
+  const [revisionError, setRevisionError] = useState<string | null>(null);
   const [approved, setApproved] = useState(false);
   const [activeTab, setActiveTab] = useState("justification");
 
@@ -915,6 +917,40 @@ export default function OrderPage() {
     } finally {
       setDenialLoading(false);
     }
+  };
+
+  const submitRevision = async () => {
+    if (!revisionNotes.trim()) {
+      setRevisionError("Please describe what needs to change.");
+      return;
+    }
+    if (!runState.runId) {
+      setRevisionError("Revision failed — please try again");
+      return;
+    }
+    setRevisionLoading(true);
+    setRevisionError(null);
+    try {
+      const res = await ordersApi.reviseDraft({
+        run_id: runState.runId,
+        revision_notes: revisionNotes.trim(),
+        current_draft: draftContent,
+      });
+      setDraftContent(res.revised_draft);
+      setShowRevisionField(false);
+      setRevisionNotes("");
+      toast.success("Letter revised — review before approving", TOAST_OPTS);
+    } catch {
+      setRevisionError("Revision failed — please try again");
+    } finally {
+      setRevisionLoading(false);
+    }
+  };
+
+  const cancelRevision = () => {
+    setShowRevisionField(false);
+    setRevisionNotes("");
+    setRevisionError(null);
   };
 
   const approveAndPackageAppeal = async () => {
@@ -1522,23 +1558,66 @@ export default function OrderPage() {
                         <p className="text-[10px] text-muted-foreground">
                           {draftContent.split(/\s+/).filter(Boolean).length} words · editable
                         </p>
+                        {revisionError && !showRevisionField && (
+                          <p className="text-xs text-red-600">{revisionError}</p>
+                        )}
                       </div>
                     )}
 
                     {showRevisionField && (
-                      <div className="space-y-1.5">
+                      <div className="space-y-3 rounded-md border border-border bg-muted/20 p-3">
                         <label className="text-xs font-medium text-muted-foreground">Revision Notes</label>
-                        <textarea className={`${INPUT} min-h-[80px] resize-y`} placeholder="Describe what needs to change…" value={revisionNotes} onChange={(e) => setRevisionNotes(e.target.value)} />
-                        <Button size="sm" variant="outline" className="text-xs" onClick={() => setShowRevisionField(false)}>Cancel</Button>
+                        <textarea
+                          className={`${INPUT} min-h-[80px] resize-y`}
+                          placeholder="Describe what needs to change..."
+                          value={revisionNotes}
+                          onChange={(e) => setRevisionNotes(e.target.value)}
+                          disabled={revisionLoading}
+                        />
+                        <Button
+                          type="button"
+                          className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
+                          onClick={submitRevision}
+                          disabled={revisionLoading || !revisionNotes.trim()}
+                        >
+                          {revisionLoading ? (
+                            <>
+                              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              Submitting Revision…
+                            </>
+                          ) : (
+                            "Submit Revision"
+                          )}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="w-full"
+                          onClick={cancelRevision}
+                          disabled={revisionLoading}
+                        >
+                          Cancel
+                        </Button>
+                        {revisionError && (
+                          <p className="text-xs text-red-600">{revisionError}</p>
+                        )}
                       </div>
                     )}
 
                     {isComplete && draftContent && !approved && (
                       <div className="flex gap-2 pt-1">
-                        <Button className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={approveAndPackage} disabled={packageLoading}>
+                        <Button className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={approveAndPackage} disabled={packageLoading || revisionLoading}>
                           {packageLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Packaging…</> : <><Package className="w-4 h-4" />Approve and Package Records</>}
                         </Button>
-                        <Button variant="outline" className="flex-1 gap-1.5" onClick={() => { setDraftContent(""); setShowRevisionField(true); }}>
+                        <Button
+                          variant="outline"
+                          className="flex-1 gap-1.5"
+                          onClick={() => {
+                            setRevisionError(null);
+                            setShowRevisionField(true);
+                          }}
+                          disabled={revisionLoading || showRevisionField}
+                        >
                           <RefreshCw className="w-4 h-4" />Request Revision
                         </Button>
                       </div>

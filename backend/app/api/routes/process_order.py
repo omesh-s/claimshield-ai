@@ -25,8 +25,9 @@ import uuid
 from datetime import datetime
 from typing import AsyncGenerator
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.logging import get_logger
@@ -35,6 +36,7 @@ from app.db.session import get_db
 from app.models.schemas import (
     ProcessOrderRequest, OrderRequest, ErrorResponse,
 )
+from app.services.llm import generate_text
 
 logger = get_logger(__name__)
 
@@ -283,3 +285,66 @@ async def process_order_sync(
         "elapsed_ms": elapsed_ms,
         "result": _state_to_result(final_state),
     }
+
+
+# ---------------------------------------------------------------------------
+# POST /api/v1/process-order/revise
+# ---------------------------------------------------------------------------
+
+
+class ReviseDraftRequest(BaseModel):
+    run_id: str
+    revision_notes: str = Field(..., min_length=1)
+    current_draft: str = Field(..., min_length=1)
+
+
+class ReviseDraftResponse(BaseModel):
+    revised_draft: str
+    word_count: int
+
+
+@router.post(
+    "/process-order/revise",
+    response_model=ReviseDraftResponse,
+    responses={502: {"model": ErrorResponse}},
+)
+async def revise_draft(request: ReviseDraftRequest) -> ReviseDraftResponse:
+    """Revise the justification letter draft using staff revision notes."""
+    logger.info(
+        "process_order.revise.start",
+        run_id=request.run_id,
+        notes_len=len(request.revision_notes),
+    )
+
+    prompt = f"""
+You are revising a prior authorization justification letter.
+
+Staff revision request: {request.revision_notes}
+
+Current letter:
+{request.current_draft}
+
+Revise the letter to address the staff's request.
+Maintain all payer criteria, clinical accuracy, and professional tone.
+Return only the revised letter text, no explanations.
+"""
+
+    try:
+        revised = (await generate_text(prompt.strip())).strip()
+    except Exception as exc:
+        logger.error("process_order.revise.error", run_id=request.run_id, error=str(exc))
+        raise HTTPException(
+            status_code=502,
+            detail=f"Letter revision failed: {exc}. Please retry.",
+        ) from exc
+
+    logger.info(
+        "process_order.revise.complete",
+        run_id=request.run_id,
+        word_count=len(revised.split()),
+    )
+
+    return ReviseDraftResponse(
+        revised_draft=revised,
+        word_count=len(revised.split()),
+    )

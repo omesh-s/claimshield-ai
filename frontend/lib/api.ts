@@ -147,6 +147,12 @@ export const ordersApi = {
       "/process-order/sync",
       { method: "POST", body: JSON.stringify({ order }) },
     ),
+
+  reviseDraft: (body: { run_id: string; revision_notes: string; current_draft: string }) =>
+    request<{ revised_draft: string; word_count: number }>("/process-order/revise", {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
 };
 
 // ---------------------------------------------------------------------------
