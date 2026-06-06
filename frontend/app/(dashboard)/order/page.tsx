@@ -922,7 +922,7 @@ export default function OrderPage() {
         order_id: denialEvent.original_order_id,
         run_id: runState.runId ?? `appeal-${denialEvent.denial_id}`,
       });
-      toast.success("Appeal package assembled — ready for review", TOAST_OPTS);
+      toast.success("Appeal package sent", TOAST_OPTS);
       router.push("/records");
     } catch (err) {
       toast.error("Packaging failed", {
@@ -938,7 +938,7 @@ export default function OrderPage() {
     setApproved(true);
     setPackageLoading(true);
     setActiveTab("records");
-    toast.success("Draft approved", { description: "Assembling clinical record bundle…", ...TOAST_OPTS });
+    toast.success("Sending package…", { description: "Assembling record bundle for payer submission.", ...TOAST_OPTS });
     try {
       const bundle = await recordsApi.packageRecords({
         run_id: runState.runId ?? "unknown",
@@ -948,8 +948,8 @@ export default function OrderPage() {
         staff_approved: true,
       });
       setPackagedBundle(bundle);
-      toast.success("Records packaged", {
-        description: `${bundle.total_artifacts} artifacts assembled — view in Record Packages.`,
+      toast.success("Package sent", {
+        description: `${bundle.total_artifacts} artifacts — status: Sent.`,
         action: {
           label: "View Records",
           onClick: () => router.push("/records"),
@@ -1553,7 +1553,7 @@ export default function OrderPage() {
                     {isComplete && draftContent && !approved && (
                       <div className="flex gap-2 pt-1">
                         <Button className="flex-1 gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white" onClick={approveAndPackage} disabled={packageLoading || revisionLoading}>
-                          {packageLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Packaging…</> : <><Package className="w-4 h-4" />Approve and Package Records</>}
+                          {packageLoading ? <><Loader2 className="w-4 h-4 animate-spin" />Sending…</> : <><Package className="w-4 h-4" />Send Package</>}
                         </Button>
                         <Button
                           variant="outline"
@@ -1573,7 +1573,7 @@ export default function OrderPage() {
                       <div className="flex items-center gap-2 p-3 rounded-md bg-emerald-50 border border-emerald-200">
                         <CheckSquare className="w-4 h-4 text-emerald-600" />
                         <p className="text-xs text-emerald-800 font-medium">
-                          Draft approved. Use &ldquo;Trigger Mock Denial&rdquo; in the left panel to simulate a payer denial and generate an appeal letter.
+                          Package sent. Use &ldquo;Trigger Mock Denial&rdquo; in the left panel to simulate a payer denial and generate an appeal letter.
                         </p>
                       </div>
                     )}
@@ -1617,9 +1617,9 @@ export default function OrderPage() {
                           disabled={packageLoading}
                         >
                           {packageLoading ? (
-                            <><Loader2 className="w-4 h-4 animate-spin" />Packaging…</>
+                            <><Loader2 className="w-4 h-4 animate-spin" />Sending…</>
                           ) : (
-                            <><Package className="w-4 h-4" />Approve &amp; Package Records</>
+                            <><Package className="w-4 h-4" />Send Package</>
                           )}
                         </Button>
                         <Button variant="outline" className="flex-1 gap-1.5" onClick={() => { setAppealLetter(null); setAppealLetterText(""); }}>

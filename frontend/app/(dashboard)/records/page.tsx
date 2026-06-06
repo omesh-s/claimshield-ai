@@ -52,15 +52,15 @@ function isReadyForReviewStatus(status: string): boolean {
   return status === STATUS_READY_FOR_REVIEW;
 }
 
-function isApprovedPackageStatus(status: string): boolean {
-  return status.startsWith("Approved");
+function isSentPackageStatus(status: string): boolean {
+  return status === "Sent" || status.startsWith("Approved");
 }
 
 function packageStatusBadge(status: string): { label: string; className: string } {
-  if (isApprovedPackageStatus(status)) {
+  if (isSentPackageStatus(status)) {
     return {
-      label: "Approved",
-      className: "bg-emerald-100 text-emerald-700 border-emerald-200",
+      label: "Sent",
+      className: "bg-blue-100 text-blue-700 border-blue-200",
     };
   }
   return {
@@ -224,9 +224,9 @@ export default function RecordsPage() {
       );
       setExpandedBundleId(null);
       setReviewBundle(null);
-      toast.success("Bundle approved", { duration: 4000 });
+      toast.success("Package sent", { duration: 4000 });
     } catch (err) {
-      toast.error("Approval failed", {
+      toast.error("Send failed", {
         description: err instanceof Error ? err.message : "Unknown error",
         duration: 4000,
       });
@@ -588,10 +588,10 @@ export default function RecordsPage() {
                                       {approveLoadingId === row.bundle_id ? (
                                         <>
                                           <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                          Approving…
+                                          Sending…
                                         </>
                                       ) : (
-                                        "Approve"
+                                        "Send Package"
                                       )}
                                     </Button>
                                     <Button
@@ -600,7 +600,7 @@ export default function RecordsPage() {
                                       className="flex-1"
                                       onClick={dismissReview}
                                     >
-                                      Dismiss
+                                      Cancel
                                     </Button>
                                   </div>
                                 </div>

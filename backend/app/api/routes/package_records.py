@@ -28,7 +28,7 @@ _PAYER_DISPLAY = {
 }
 
 BUNDLE_STATUS_READY_FOR_REVIEW = "Ready for Review"
-BUNDLE_STATUS_APPROVED = "Approved — Ready to Export"
+BUNDLE_STATUS_SENT = "Sent"
 
 # In-memory package store — persists for the lifetime of the server process.
 _PACKAGE_STORE: list[dict] = []
@@ -348,7 +348,7 @@ async def _assemble_package(request: PackageRecordsRequest) -> PackagedBundle:
         if demographics else patient_id
     )
     bundle_status = (
-        BUNDLE_STATUS_APPROVED if request.staff_approved else BUNDLE_STATUS_READY_FOR_REVIEW
+        BUNDLE_STATUS_SENT if request.staff_approved else BUNDLE_STATUS_READY_FOR_REVIEW
     )
     _PACKAGE_STORE.insert(0, {
         "bundle_id": bundle.bundle_id,
@@ -452,15 +452,15 @@ async def get_package_record(bundle_id: str) -> PackagedBundle:
     responses={404: {"model": ErrorResponse}},
 )
 async def approve_package_record(bundle_id: str) -> PackageSummary:
-    """Mark a bundle as staff-approved after inline review."""
+    """Mark a reviewed bundle as sent to payer (demo submission)."""
     _init_package_store()
     entry = _find_bundle(bundle_id)
     if not entry:
         raise HTTPException(status_code=404, detail=f"Bundle '{bundle_id}' not found.")
 
     entry["staff_approved"] = True
-    entry["status"] = BUNDLE_STATUS_APPROVED
-    logger.info("package_records.approved", bundle_id=bundle_id)
+    entry["status"] = BUNDLE_STATUS_SENT
+    logger.info("package_records.sent", bundle_id=bundle_id)
     return PackageSummary(
         bundle_id=entry["bundle_id"],
         patient_id=entry["patient_id"],

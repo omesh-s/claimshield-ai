@@ -175,7 +175,7 @@ export default function DenialPage() {
         order_id: seededDenial?.original_order_id,
         run_id: `appeal-${denialId}`,
       });
-      toast.success("Appeal package assembled — ready for review", { duration: 4000 });
+      toast.success("Appeal package sent", { duration: 4000 });
       fetchAppealsCount();
       router.push("/records");
     } catch (err) {
@@ -435,12 +435,12 @@ export default function DenialPage() {
                     {packageLoading ? (
                       <>
                         <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Packaging…
+                        Sending…
                       </>
                     ) : (
                       <>
                         <ShieldCheck className="w-4 h-4 mr-2" />
-                        Approve &amp; Package Records
+                        Send Package
                       </>
                     )}
                   </Button>

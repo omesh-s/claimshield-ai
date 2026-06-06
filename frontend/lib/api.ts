@@ -205,7 +205,7 @@ export interface PackageRecordsParams {
   bundle_type?: string;
   denial_id?: string;
   appeal_letter_content?: string;
-  /** True when staff approved AI output before packaging (New Order / Denial flows). */
+  /** True when staff sends the package after review (New Order / Denial flows). */
   staff_approved?: boolean;
 }
 
