@@ -281,15 +281,14 @@ export default function RecordsPage() {
   const actionCount = bundle?.submission_checklist.filter((i) => i.status === "action_required").length ?? 0;
 
   return (
-    <div className="px-12 py-6 space-y-6">
-      {/* Header */}
+    <div className="w-full p-6 space-y-5">
       <div>
         <div className="flex items-center gap-2 mb-1">
           <FolderOpen className="w-5 h-5 text-primary" />
-          <h1 className="text-4xl font-bold text-foreground">Record Packages</h1>
+          <h1 className="text-lg font-semibold text-foreground">Record Packages</h1>
         </div>
-        <p className="text-base text-muted-foreground">
-          Assemble and export payer-ready clinical record bundles.
+        <p className="text-sm text-muted-foreground">
+          Assemble, review, and export clinical record bundles.
         </p>
       </div>
 
@@ -297,13 +296,10 @@ export default function RecordsPage() {
         {/* Assembly form */}
         <Card className="border border-border">
           <CardHeader className="pb-4 pt-5">
-            <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
               <Package className="w-4 h-4 text-primary" />
               Assemble Bundle
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Select a patient and payer to assemble a payer-ready clinical record bundle.
-            </p>
           </CardHeader>
           <CardContent className="pb-6">
             <form onSubmit={handleSubmit} className="space-y-4">
@@ -316,7 +312,6 @@ export default function RecordsPage() {
                   onChange={(e) => field("patient_id", e.target.value)}
                   disabled={loading}
                 />
-                <p className="text-[11px] text-muted-foreground mt-1">Demo patients: 10482736, 20193847, 30571629</p>
               </div>
 
               <div>
@@ -451,8 +446,7 @@ export default function RecordsPage() {
               </div>
               <p className="text-sm font-medium text-foreground">Bundle Will Appear Here</p>
               <p className="text-xs text-muted-foreground max-w-xs">
-                Select a patient and payer, then click Assemble Package to generate a
-                payer-ready clinical record bundle with a submission checklist.
+                Select patient and payer, then assemble a bundle.
               </p>
             </CardContent>
           </Card>
@@ -626,15 +620,6 @@ export default function RecordsPage() {
         </CardContent>
       </Card>
 
-      {/* HITL disclaimer */}
-      <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
-        <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-        <div>
-          <span className="font-semibold">Human-in-the-Loop:</span> All assembled bundles are
-          drafts for staff review. Verify every checklist item before submitting to a payer.
-          No clinical data is transmitted automatically.
-        </div>
-      </div>
     </div>
   );
 }

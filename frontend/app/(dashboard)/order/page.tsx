@@ -18,14 +18,15 @@ import {
   FileText,
   Clock,
   AlertOctagon,
-  Info,
   Package,
   CheckSquare,
   Download,
   ShieldAlert,
   RotateCcw,
   Printer,
+  Eye,
 } from "lucide-react";
+import { ViewOrderPanel } from "@/components/order/ViewOrderPanel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -51,7 +52,6 @@ import type {
   WorkflowResult,
   GapAnalysisResult,
   ScoringResult,
-  PatientImpact,
   CodeMismatchWarning,
   DenialEvent,
   AppealLetter,
@@ -89,26 +89,26 @@ const DEMO_CASE_META: DemoCaseMeta[] = [
   {
     case_id: "DEMO-001",
     label: "Missing Cardiology Note",
-    tags: ["Missing Doc", "Cardiac CTA", "Primary Demo"],
-    tagColors: ["bg-red-100 text-red-700", "bg-blue-100 text-blue-700", "bg-emerald-100 text-emerald-700"],
+    tags: ["PA Required", "Gap Expected", "75571"],
+    tagColors: ["bg-blue-100 text-blue-700", "bg-red-100 text-red-700", "bg-muted text-muted-foreground"],
     bannerClass: "bg-blue-50 border-blue-200 text-blue-800",
-    bannerLabel: "Primary Demo: Missing Cardiology Note",
+    bannerLabel: "Template: Missing Cardiology Note",
   },
   {
     case_id: "DEMO-002",
     label: "Clean Approval",
-    tags: ["All Criteria Met", "Cardiac MRI", "Clean"],
-    tagColors: ["bg-emerald-100 text-emerald-700", "bg-blue-100 text-blue-700", "bg-gray-100 text-gray-700"],
+    tags: ["PA Required", "All Met", "75561"],
+    tagColors: ["bg-blue-100 text-blue-700", "bg-emerald-100 text-emerald-700", "bg-muted text-muted-foreground"],
     bannerClass: "bg-emerald-50 border-emerald-200 text-emerald-800",
-    bannerLabel: "Clean Approval Scenario",
+    bannerLabel: "Template: Clean Approval",
   },
   {
     case_id: "DEMO-003",
     label: "Code Mismatch Warning",
-    tags: ["Code Mismatch", "Cardiac CTA", "Pneumonia Dx"],
-    tagColors: ["bg-red-100 text-red-700", "bg-blue-100 text-blue-700", "bg-amber-100 text-amber-700"],
+    tags: ["Code Validation", "75571", "J18.9"],
+    tagColors: ["bg-amber-100 text-amber-700", "bg-muted text-muted-foreground", "bg-red-100 text-red-700"],
     bannerClass: "bg-amber-50 border-amber-200 text-amber-800",
-    bannerLabel: "Code Mismatch Warning Scenario",
+    bannerLabel: "Template: Code Mismatch Warning",
   },
 ];
 
@@ -124,11 +124,11 @@ const PAYER_OPTIONS = [
 // Workflow steps
 // ---------------------------------------------------------------------------
 const STEPS = [
-  { key: "detect", label: "Detect", icon: Zap, desc: "PA requirement + code validation" },
-  { key: "retrieve", label: "Retrieve", icon: Database, desc: "Payer policy retrieval" },
-  { key: "analyze", label: "Analyze", icon: Brain, desc: "Chart vs. criteria gap analysis" },
-  { key: "draft", label: "Draft", icon: PenLine, desc: "Justification letter generation" },
-  { key: "score", label: "Score", icon: Star, desc: "AI self-score & readiness check" },
+  { key: "detect", label: "Detect", icon: Zap },
+  { key: "retrieve", label: "Retrieve", icon: Database },
+  { key: "analyze", label: "Analyze", icon: Brain },
+  { key: "draft", label: "Draft", icon: PenLine },
+  { key: "score", label: "Review", icon: Star },
 ];
 
 // ---------------------------------------------------------------------------
@@ -275,7 +275,6 @@ function WorkflowTimeline({
                     <span className="text-[10px] text-red-500">failed</span>
                   )}
                 </div>
-                <p className="text-[10px] text-muted-foreground/50 truncate">{step.desc}</p>
               </div>
             </div>
           );
@@ -458,42 +457,6 @@ function GapAnalysisCard({ gap }: { gap: GapAnalysisResult }) {
           </div>
         ))}
 
-        {/* Overall clinical reasoning */}
-        {gap.analyst_summary && (
-          <div className="mt-2 pt-2 border-t border-border">
-            <p className="text-[10px] font-semibold text-muted-foreground mb-0.5">Clinical Reasoning</p>
-            <p className="text-xs text-muted-foreground leading-relaxed">{gap.analyst_summary}</p>
-          </div>
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Patient impact card
-// ---------------------------------------------------------------------------
-function PatientImpactCard({ impact }: { impact: PatientImpact }) {
-  return (
-    <Card className="border-blue-100 bg-blue-50/40">
-      <CardContent className="pt-3 pb-3">
-        <p className="text-xs font-semibold text-blue-800 mb-2 flex items-center gap-1.5">
-          <Info className="w-3.5 h-3.5" />Patient Impact
-        </p>
-        <div className="space-y-1.5">
-          <div className="flex items-start gap-2">
-            <Clock className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-blue-900"><span className="font-medium">Time saved:</span> {impact.estimated_wait_time_saved}</p>
-          </div>
-          <div className="flex items-start gap-2">
-            <CheckCircle2 className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-blue-900"><span className="font-medium">Auth risk:</span> {impact.auth_failure_risk}</p>
-          </div>
-          <div className="flex items-start gap-2">
-            <Info className="w-3.5 h-3.5 text-blue-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-blue-900">{impact.patient_note}</p>
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
@@ -537,75 +500,44 @@ function FilingDeadlineWidget({ status }: { status: FilingDeadlineStatus }) {
 }
 
 // ---------------------------------------------------------------------------
-// Self-score card — circular progress + colored pills
+// Draft readiness — compact staff review status (no rubric detail)
 // ---------------------------------------------------------------------------
-function ScoreCard({
-  scoring,
-  onExport,
-  draftContent,
-  result,
-}: {
-  scoring: ScoringResult;
-  onExport: () => void;
-  draftContent: string;
-  result?: WorkflowResult;
-}) {
+function DraftReadinessBar({ scoring }: { scoring: ScoringResult }) {
   const pct = Math.round(scoring.readiness_score ?? 0);
   const ready = scoring.submission_readiness === "ready";
   const needsRevision = (scoring.submission_readiness as string) === "needs_revision";
   const color = ready ? "#16a34a" : needsRevision ? "#d97706" : "#dc2626";
-  const borderClass = ready ? "border-emerald-200" : needsRevision ? "border-amber-200" : "border-red-200";
+  const passCount = scoring.scores.filter((s) => s.score === "pass").length;
+  const flagCount = scoring.scores.filter((s) => s.score === "flag").length;
+  const failCount = scoring.scores.filter((s) => s.score === "fail").length;
 
   return (
-    <Card className={borderClass}>
-      <CardHeader className="pb-2 pt-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-            AI Self-Score
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            <CircularProgress pct={pct} color={color} />
-            <Badge
-              className={
-                ready
-                  ? "bg-emerald-100 text-emerald-700 border-emerald-200 text-xs"
-                  : needsRevision
-                  ? "bg-amber-100 text-amber-700 border-amber-200 text-xs"
-                  : "bg-red-100 text-red-700 border-red-200 text-xs"
-              }
-            >
-              {ready ? "Ready" : needsRevision ? "Needs Revision" : "Not Ready"}
-            </Badge>
-          </div>
-        </div>
-      </CardHeader>
-      <CardContent className="pb-3 space-y-1.5">
-        {scoring.scores.map((s, i) => (
-          <div key={i} className="flex items-start gap-2">
-            <span
-              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold shrink-0 mt-0.5 ${
-                s.score === "pass"
-                  ? "bg-emerald-100 text-emerald-700"
-                  : s.score === "flag"
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-red-100 text-red-700"
-              }`}
-            >
-              {s.score}
-            </span>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs text-foreground leading-snug">{s.criterion_text}</p>
-              {s.rationale && (
-                <p className="text-[10px] text-muted-foreground mt-0.5">{s.rationale}</p>
-              )}
+    <Card className="border-border">
+      <CardContent className="pt-3 pb-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+              Draft Readiness
+            </p>
+            <div className="flex items-center gap-2 mt-1">
+              <Badge
+                className={
+                  ready
+                    ? "bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]"
+                    : needsRevision
+                    ? "bg-amber-100 text-amber-700 border-amber-200 text-[10px]"
+                    : "bg-red-100 text-red-700 border-red-200 text-[10px]"
+                }
+              >
+                {ready ? "Ready for review" : needsRevision ? "Needs revision" : "Not ready"}
+              </Badge>
+              <span className="text-[10px] text-muted-foreground">
+                {passCount} pass · {flagCount} flag · {failCount} fail
+              </span>
             </div>
           </div>
-        ))}
-        {scoring.reviewer_notes && (
-          <p className="text-xs text-muted-foreground border-t border-border pt-2 mt-2">
-            {scoring.reviewer_notes}
-          </p>
-        )}
+          <CircularProgress pct={pct} color={color} />
+        </div>
       </CardContent>
     </Card>
   );
@@ -806,6 +738,7 @@ export default function OrderPage() {
   const [packageLoading, setPackageLoading] = useState(false);
 
   const [showDemoModal, setShowDemoModal] = useState(false);
+  const [showViewOrder, setShowViewOrder] = useState(false);
   const [showMismatchModal, setShowMismatchModal] = useState(false);
   const [pendingMismatch, setPendingMismatch] = useState<CodeMismatchWarning | null>(null);
 
@@ -831,6 +764,22 @@ export default function OrderPage() {
     const meta = DEMO_CASE_META.find((d) => d.case_id === caseId);
     if (!meta) return;
     setDemoLoadId(caseId);
+    streamAbortRef.current?.abort();
+    streamAbortRef.current = null;
+    setWorkflowHeartbeat(false);
+    setLiveScoring(null);
+    setRunState({ status: "idle", steps: initSteps() });
+    setDraftContent("");
+    setShowRevisionField(false);
+    setRevisionNotes("");
+    setRevisionError(null);
+    setApproved(false);
+    setActiveTab("justification");
+    setPendingMismatch(null);
+    setDenialEvent(null);
+    setAppealLetter(null);
+    setAppealLetterText("");
+    setPackagedBundle(null);
     try {
       const detail = await demoCasesApi.get(caseId);
       setForm(detail.order);
@@ -842,8 +791,8 @@ export default function OrderPage() {
         clinicalNotes: detail.order.clinical_notes,
       });
       setShowDemoModal(false);
-      toast.success("Demo case loaded", {
-        description: `${detail.label} — click Submit to run the workflow.`,
+      toast.success("Workflow template loaded", {
+        description: `${detail.label} — submit to run the PA workflow.`,
         ...TOAST_OPTS,
       });
     } catch (err) {
@@ -1123,7 +1072,8 @@ export default function OrderPage() {
                     ? "ready"
                     : "needs_review",
                 scores: [],
-                reviewer_notes: "Score step complete — full breakdown loading…",
+                reviewer_notes: "",
+                scored_at: new Date().toISOString(),
               });
             }
             setRunState((s) => ({
@@ -1194,15 +1144,25 @@ export default function OrderPage() {
         />
       )}
 
-      {/* Demo case selector modal */}
+      <ViewOrderPanel
+        open={showViewOrder}
+        onOpenChange={setShowViewOrder}
+        form={form}
+        patientName={loadedCase?.patientName}
+        payerDisplay={loadedCase?.payer}
+        templateId={loadedCase?.case_id ?? form.demo_case_id}
+        workflowPatient={result?.patient ?? null}
+      />
+
+      {/* Workflow template selector */}
       <Dialog open={showDemoModal} onOpenChange={setShowDemoModal}>
         <DialogContent className="max-w-lg" showCloseButton>
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" />
-              Load Demo Case
+              Workflow Templates
             </DialogTitle>
-            <DialogDescription>Select a pre-seeded scenario to load into the order form.</DialogDescription>
+            <DialogDescription>Pre-configured PA scenarios — standardized order intake.</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 py-1">
             {DEMO_CASE_META.map((demo) => (
@@ -1293,13 +1253,22 @@ export default function OrderPage() {
           <div>
             <h1 className="text-base font-semibold text-foreground">New Prior Authorization</h1>
             <p className="text-xs text-muted-foreground">
-              Submit an order to run the AI workflow — results require staff review before payer submission.
+              Order intake → PA workflow → staff-reviewed draft.
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs gap-1.5"
+              onClick={() => setShowViewOrder(true)}
+              disabled={!form.patient_id?.trim()}
+            >
+              <Eye className="w-3.5 h-3.5" />View Order
+            </Button>
             {showResults && (
               <Button variant="outline" size="sm" onClick={resetWorkspace} className="text-xs gap-1.5">
-                <RotateCcw className="w-3.5 h-3.5" />Reset Workspace
+                <RotateCcw className="w-3.5 h-3.5" />Reset
               </Button>
             )}
           </div>
@@ -1317,28 +1286,13 @@ export default function OrderPage() {
               </div>
             )}
 
-            {loadedCase?.clinicalNotes && (
-              <Card>
-                <CardHeader className="pb-1 pt-3">
-                  <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Clinical Notes (preview)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="pb-3">
-                  <p className="text-xs text-muted-foreground leading-relaxed line-clamp-4">
-                    {loadedCase.clinicalNotes}
-                  </p>
-                </CardContent>
-              </Card>
-            )}
-
             {/* Order form */}
             <Card>
               <CardHeader className="pb-2 pt-3">
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Order Entry</CardTitle>
                   <Button variant="outline" size="sm" className="text-xs gap-1" onClick={() => setShowDemoModal(true)} disabled={isRunning}>
-                    <FileText className="w-3 h-3" />Load Demo Case
+                    <FileText className="w-3 h-3" />Templates
                   </Button>
                 </div>
               </CardHeader>
@@ -1435,7 +1389,6 @@ export default function OrderPage() {
             )}
             {result?.gap_analysis && <GapAnalysisCard gap={result.gap_analysis} />}
 
-            {result?.patient_impact && <PatientImpactCard impact={result.patient_impact} />}
             {(isRunning || isComplete) && filingDeadlineStatus && (
               <FilingDeadlineWidget status={filingDeadlineStatus} />
             )}
@@ -1473,13 +1426,13 @@ export default function OrderPage() {
                   <Brain className="w-6 h-6 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-foreground">Ready for your order</p>
+                  <p className="text-sm font-medium text-foreground">No active workflow</p>
                   <p className="text-xs text-muted-foreground mt-0.5 max-w-xs">
-                    Fill in the form and click Submit, or use Load Demo Case for a quick start.
+                    Load a template or enter order details, then submit.
                   </p>
                 </div>
                 <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={() => setShowDemoModal(true)} disabled={isRunning}>
-                  <FileText className="w-3.5 h-3.5" />Load Demo Case
+                  <FileText className="w-3.5 h-3.5" />Workflow Templates
                 </Button>
               </div>
             )}
@@ -1517,14 +1470,7 @@ export default function OrderPage() {
                     {isRunning && !displayScoring && runState.steps["score"]?.status !== "complete" && (
                       <Card><CardContent className="pt-3 pb-3 space-y-2"><div className="flex items-center justify-between"><Skeleton className="h-3 w-24" /><Skeleton className="h-6 w-16" /></div>{[1, 2, 3].map((i) => <Skeleton key={i} className="h-6 w-full rounded" />)}</CardContent></Card>
                     )}
-                    {displayScoring && (
-                      <ScoreCard
-                        scoring={displayScoring}
-                        onExport={handleExportForReview}
-                        draftContent={draftContent}
-                        result={result}
-                      />
-                    )}
+                    {displayScoring && <DraftReadinessBar scoring={displayScoring} />}
 
                     {(isRunning || isComplete) && (
                       <div className="flex items-start gap-2 p-3 rounded-md bg-amber-50 border border-amber-200">
@@ -1640,7 +1586,7 @@ export default function OrderPage() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 p-3 rounded-md bg-blue-50 border border-blue-200">
                         <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                        <p className="text-xs text-blue-800">Gemini is drafting the appeal letter citing ACC/AHA 2021 guidelines…</p>
+                        <p className="text-xs text-blue-800">Drafting appeal letter…</p>
                       </div>
                       <Card><CardContent className="pt-3 pb-3 space-y-1.5">{Array.from({ length: 16 }).map((_, i) => <Skeleton key={i} className="h-3" style={{ width: `${65 + Math.random() * 33}%` }} />)}</CardContent></Card>
                     </div>

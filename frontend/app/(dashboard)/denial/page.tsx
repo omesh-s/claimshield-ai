@@ -7,15 +7,9 @@ import {
   AlertTriangle,
   Loader2,
   FileText,
-  CheckCircle2,
-  Zap,
-  Database,
-  Brain,
-  PenLine,
-  Star,
   Download,
   ShieldCheck,
-  Clock,
+  PenLine,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -35,19 +29,6 @@ const PAYERS = [
   { label: "BCBS Texas PPO", value: "bcbs_tx" },
   { label: "Aetna", value: "aetna" },
   { label: "United Healthcare", value: "unitedhealthcare" },
-];
-
-const WORKFLOW_STEPS = [
-  { num: "01", icon: Zap,      label: "Detect",   color: "text-blue-600",   bg: "bg-blue-50" },
-  { num: "02", icon: Database, label: "Retrieve",  color: "text-indigo-600", bg: "bg-indigo-50" },
-  { num: "03", icon: Brain,    label: "Analyze",   color: "text-violet-600", bg: "bg-violet-50" },
-  { num: "04", icon: PenLine,  label: "Draft",     color: "text-emerald-600",bg: "bg-emerald-50" },
-  { num: "05", icon: Star,     label: "Score",     color: "text-amber-600",  bg: "bg-amber-50" },
-];
-
-const BENCHMARK_STATS = [
-  { value: "~73%", label: "Industry Overturn Rate", icon: CheckCircle2, color: "text-emerald-600", bg: "bg-emerald-50", border: "border-emerald-100" },
-  { value: "2.1 Min", label: "Avg. Time Per Appeal", icon: Clock, color: "text-violet-600", bg: "bg-violet-50", border: "border-violet-100" },
 ];
 
 interface FormState {
@@ -220,55 +201,37 @@ export default function DenialPage() {
   const wordCount = letterText.trim().split(/\s+/).filter(Boolean).length;
 
   return (
-    <div className="px-12 py-6 space-y-6">
-      {/* Header */}
+    <div className="w-full p-6 space-y-5">
       <div>
         <div className="flex items-center gap-2 mb-1">
           <AlertTriangle className="w-5 h-5 text-primary" />
-          <h1 className="text-4xl font-bold text-foreground">Denial &amp; Appeal</h1>
+          <h1 className="text-lg font-semibold text-foreground">Denial &amp; Appeal</h1>
         </div>
-        <p className="text-base text-muted-foreground">
-          Review denied claims and generate AI-drafted appeal letters.
+        <p className="text-sm text-muted-foreground">
+          Review payer denials and draft appeal letters for staff approval.
         </p>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="border border-blue-100">
-          <CardContent className="p-6">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
-              <FileText className="w-4 h-4 text-blue-600" />
-            </div>
-            <p className="text-3xl font-bold text-foreground leading-tight">
+      <Card>
+        <CardContent className="pt-4 pb-4 flex items-center gap-3">
+          <FileText className="w-4 h-4 text-primary" />
+          <div>
+            <p className="text-xl font-bold text-foreground tabular-nums">
               {appealsCount === null ? "—" : appealsCount}
             </p>
-            <p className="text-sm font-medium text-muted-foreground mt-1">Appeals Generated</p>
-          </CardContent>
-        </Card>
-        {BENCHMARK_STATS.map(({ value, label, icon: Icon, color, bg, border }) => (
-          <Card key={label} className={`border ${border}`}>
-            <CardContent className="p-6">
-              <div className={`w-8 h-8 rounded-lg ${bg} flex items-center justify-center mb-3`}>
-                <Icon className={`w-4 h-4 ${color}`} />
-              </div>
-              <p className="text-3xl font-bold text-foreground leading-tight">{value}</p>
-              <p className="text-sm font-medium text-muted-foreground mt-1">{label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            <p className="text-xs text-muted-foreground">Appeal packages in queue</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Form */}
         <Card className="border border-border">
           <CardHeader className="pb-4 pt-5">
-            <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
+            <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
               <FileText className="w-4 h-4 text-primary" />
-              Denial Details
+              Denial Intake
             </CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Load the seeded DEMO-001 denial or enter details manually. Appeals are drafts for staff review only.
-            </p>
           </CardHeader>
           <CardContent className="pb-6 space-y-4">
             <Button
@@ -286,7 +249,7 @@ export default function DenialPage() {
               ) : (
                 <>
                   <FileText className="w-4 h-4 mr-2" />
-                  Load Seeded Denial (DEMO-001)
+                  Load Template Denial (DEMO-001)
                 </>
               )}
             </Button>
@@ -410,8 +373,8 @@ export default function DenialPage() {
                   </>
                 ) : (
                   <>
-                    <Brain className="w-4 h-4 mr-2" />
-                    {seededDenial ? "Generate Appeal Draft" : "Generate Appeal Letter"}
+                    <FileText className="w-4 h-4 mr-2" />
+                    {seededDenial ? "Generate Appeal Draft" : "Generate Appeal Draft"}
                   </>
                 )}
               </Button>
@@ -422,33 +385,14 @@ export default function DenialPage() {
           </CardContent>
         </Card>
 
-        {/* Output panel */}
         <div className="space-y-4">
-          {/* Workflow steps */}
-          <Card className="border border-border">
-            <CardContent className="p-5">
-              <div className="grid grid-cols-5 gap-2 relative">
-                <div className="absolute top-5 left-[10%] right-[10%] h-px bg-border hidden md:block" />
-                {WORKFLOW_STEPS.map(({ num, icon: Icon, label, color, bg }) => (
-                  <div key={num} className="flex flex-col items-center text-center gap-2 relative">
-                    <div className={`w-10 h-10 rounded-full ${bg} flex items-center justify-center ring-2 ring-background z-10 ${loading ? "animate-pulse" : ""}`}>
-                      <Icon className={`w-5 h-5 ${color}`} />
-                    </div>
-                    <p className="text-xs font-semibold text-foreground">{label}</p>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Appeal letter output */}
           {appeal ? (
             <Card className="border border-border">
               <CardHeader className="pb-3 pt-5">
                 <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg font-semibold text-foreground flex items-center gap-2">
-                    <PenLine className="w-4 h-4 text-emerald-600" />
-                    AI-Generated Appeal Letter
+                  <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-primary" />
+                    Appeal Letter Draft
                   </CardTitle>
                   <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs">
                     {appeal.appeal_id}
@@ -511,8 +455,7 @@ export default function DenialPage() {
                 </div>
                 <p className="text-sm font-medium text-foreground">Appeal Letter Will Appear Here</p>
                 <p className="text-xs text-muted-foreground max-w-xs">
-                  Fill in the denial details and click Generate Appeal Letter. Gemini will draft a
-                  clinical appeal citing guideline evidence.
+                  Load a template denial or enter details, then generate an appeal draft.
                 </p>
               </CardContent>
             </Card>
@@ -520,15 +463,6 @@ export default function DenialPage() {
         </div>
       </div>
 
-      {/* HITL disclaimer */}
-      <div className="flex items-start gap-3 p-3 rounded-lg bg-amber-50 border border-amber-200 text-xs text-amber-800">
-        <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
-        <div>
-          <span className="font-semibold">Human-in-the-Loop:</span> ClaimShield AI never
-          auto-submits appeals to a payer. Every generated letter is a draft requiring clinical
-          staff review and approval before any payer interaction.
-        </div>
-      </div>
     </div>
   );
 }

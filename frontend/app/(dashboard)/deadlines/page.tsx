@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import { Clock, AlertTriangle, CheckCircle2, XCircle, Info } from "lucide-react";
+import { Clock, AlertTriangle, CheckCircle2, XCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { listDemoFilingDeadlineRows } from "@/lib/filing-deadlines";
@@ -42,7 +42,7 @@ export default function DeadlinesPage() {
   );
 
   return (
-    <div className="p-6 space-y-5 max-w-5xl mx-auto">
+    <div className="w-full p-6 space-y-5">
       <div>
         <div className="flex items-center gap-2 mb-1">
           <Clock className="w-5 h-5 text-primary" />
@@ -50,15 +50,6 @@ export default function DeadlinesPage() {
         </div>
         <p className="text-sm text-muted-foreground">
           Track state and payer filing deadline rules for active PA cases.
-        </p>
-      </div>
-
-      <div className="flex items-start gap-2.5 p-3.5 rounded-lg bg-blue-50 border border-blue-200 text-xs text-blue-800">
-        <Info className="w-4 h-4 text-blue-500 shrink-0 mt-0.5" />
-        <p>
-          <span className="font-semibold">Filing deadlines vary by payer and state.</span> Rules shown
-          are seeded demo data. Verify with your payer contracts before relying on these dates.
-          Late claims may be denied for untimely filing regardless of medical necessity.
         </p>
       </div>
 
@@ -126,10 +117,7 @@ export default function DeadlinesPage() {
                         <p className="font-medium text-foreground">{row.patientName}</p>
                         <p className="text-[10px] text-muted-foreground">{row.patientId} · CPT {row.cptCode}</p>
                       </td>
-                      <td className="py-3 pr-4">
-                        <p className="text-foreground">{row.payer}</p>
-                        <p className="text-[10px] text-muted-foreground">{row.rule.rule}</p>
-                      </td>
+                      <td className="py-3 pr-4 text-foreground">{row.payer}</td>
                       <td className="py-3 pr-4 text-foreground font-mono text-xs">{row.serviceDate}</td>
                       <td className="py-3 pr-4">
                         <p className="text-foreground font-mono text-xs">{row.deadlineDate}</p>
@@ -157,24 +145,6 @@ export default function DeadlinesPage() {
         </CardContent>
       </Card>
 
-      <div className="space-y-2">
-        <h2 className="text-sm font-semibold text-foreground">Action Required</h2>
-        {deadlineRows.filter((r) => r.note).map((row) => {
-          const cfg = STATUS_CONFIG[row.status];
-          const Icon = cfg.Icon;
-          return (
-            <div
-              key={row.rowId}
-              className={`flex items-start gap-2.5 p-3 rounded-lg border text-xs ${row.status === "ok" ? "bg-blue-50 border-blue-100 text-blue-800" : row.status === "warning" ? "bg-amber-50 border-amber-200 text-amber-800" : "bg-red-50 border-red-200 text-red-800"}`}
-            >
-              <Icon className={`w-4 h-4 shrink-0 mt-0.5 ${cfg.iconClass}`} />
-              <div>
-                <span className="font-semibold">{row.patientName}:</span> {row.note}
-              </div>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }

@@ -85,13 +85,13 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="p-6 space-y-5 max-w-3xl mx-auto">
+    <div className="w-full p-6 space-y-5">
       <div>
         <div className="flex items-center gap-2 mb-1">
           <Settings className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-semibold text-foreground">Settings</h1>
         </div>
-        <p className="text-sm text-muted-foreground">System configuration and admin controls for the demo environment.</p>
+        <p className="text-sm text-muted-foreground">System configuration and environment status.</p>
       </div>
 
       {/* System status */}
